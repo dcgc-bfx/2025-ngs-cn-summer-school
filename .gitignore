@@ -1,0 +1,12 @@
+# Ignore general files and directories
+.Rhistory
+.RData
+.Ruserdata
+.Rproj
+.Rproj.user
+.DS_Store
+2025-ngs-cn-summer-school.Rproj
+/.quarto/
+/book*/
+/*_freeze/
+/site_libs/
