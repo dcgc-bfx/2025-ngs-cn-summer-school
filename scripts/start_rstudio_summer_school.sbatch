@@ -2,13 +2,15 @@
 #SBATCH --time=08:00:00
 #SBATCH --signal=USR2
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=8192
-#SBATCH --output=/home/sequencing/andpetzo/rstudio-server-how-to-login.txt
-#SBATCH --error=/home/sequencing/andpetzo/rstudio-server-errors.txt
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=24000
+#SBATCH --output=rstudio_summer_school_login.txt
+#SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=andpetzo
 #SBATCH --partition=ngs.q
 #SBATCH --nodelist=compute-2-3
+
+# Distribute across compute nodes
 
 ###################################
 # USER-SPECIFIC SETTINGS (CHANGE) #
@@ -19,16 +21,11 @@
 # - start job as user1, run rstudio as user2
 # - adjust/fix singularity image path
 
-# Distribute across compute nodes
-
-# Set the compute node (needs to be the same as above in nodelist)
-COMPUTE_NODE=compute-2-3
-
 # Set the user login (needs to be the same as above in output, error and job-name
-USER=USER
+USER=andpetzo
 
 # Set a generic password
-PASSWORD=abba
+PASSWORD=notsafe
 
 # Set a port between 9000 and 9025
 PORT=9001
@@ -41,36 +38,56 @@ SINGULARITY_IMAGE=/group/sequencing/bfx/scripts/andreasp/2025-ngs-cn-summer-scho
 ########################################################################
 
 # Create a unique temporary directory for this job
-workdir=$(mktemp -p /tmp  -d)
+workdir=$(mktemp -p /tmp  -d summer_school.XXXXXXXXXX)
 
 # Set up the cleanup trap
 trap "rm -rf ${workdir}" EXIT
 
-# This is the working directory for r-server/singularity
+# This is the working directory for singularity
+mkdir ${workdir}/singularity
+
+# This is the working directory for the R server
 mkdir ${workdir}/rserver
 
-# This is the temp directory for this job
+# This is the temp directory for computations in R
 mkdir ${workdir}/tmp
 
-# Set R_LIBS_USER to an existing path specific to rocker/rstudio to avoid conflicts with
-# personal libraries from any R installation in the host environment
+# Create a custom user .Renviron file (contains environment variables for R) for this session
+if [ -f ${HOME}/.Renviron ]
+then
+  cp ${HOME}/.Renviron ${workdir}/rserver/.Renviron
+else
+  touch ${workdir}/rserver/.Renviron
+fi
+export R_ENVIRON_USER=${workdir}/rserver/.Renviron
 
-cat > ${workdir}/rserver/rsession.sh <<"END"
+# Create custom directory for user-installed libraries and add to .Renviron file
+R_LIBS_USER="${HOME}/R/start_rstudio_summer_school/%p-library/%v"
+mkdir -p "${HOME}/R/start_rstudio_summer_school"
+echo "R_LIBS_USER=${R_LIBS_USER}" >> ${workdir}/rserver/.Renviron
+
+# Create a custom rsession.sh script that will be 
+cat > ${workdir}/rserver/rsession.sh <<END
 #!/bin/sh
-export R_LIBS_USER=${HOME}/R/rstudio-server/4.4.2
-mkdir -p "${R_LIBS_USER}"
-## custom Rprofile & Renviron (default is $HOME/.Rprofile and $HOME/.Renviron)
-# export R_PROFILE_USER=/path/to/Rprofile
-# export R_ENVIRON_USER=/path/to/Renviron
-exec /usr/lib/rstudio-server/bin/rsession "${@}"
+
+# Set temp directory
+export TMPDIR="${workdir}/tmp"
+
+# Export user Renviron
+export R_ENVIRON_USER="${R_ENVIRON_USER}"
+exec /usr/lib/rstudio-server/bin/rsession "\${@}"
 END
 
 chmod +x ${workdir}/rserver/rsession.sh
+
 
 # Do not suspend idle sessions.
 # Alternative to setting session-timeout-minutes=0 in /etc/rstudio/rsession.conf
 # https://github.com/rstudio/rstudio/blob/v1.4.1106/src/cpp/server/ServerSessionManager.cpp#L126
 export RSTUDIO_SESSION_TIMEOUT=0
+
+# Host name
+COMPUTE_NODE=$(hostname | sed 's/.biocluster$//')
 
 # Print message with instructions
 cat <<END
@@ -93,20 +110,22 @@ When done using RStudio Server, terminate the job by:
       scancel -f ${SLURM_JOB_ID}
 END
 
-# Load singularity and set variables that should be exported
+# Load singularity and set variables that should be exported from host environment
 module load apps/singularity
 
-export SINGULARITYENV_USER=$USER
-export SINGULARITYENV_PASSWORD=$PASSWORD
-export SINGULARITYENV_PORT=$PORT
+export SINGULARITYENV_USER=${USER}
+export SINGULARITYENV_PASSWORD=${PASSWORD}
+export SINGULARITYENV_PORT=${PORT}
 export SINGULARITYENV_RSTUDIO_SESSION_TIMEOUT=0
+export SINGULARITYENV_R_ENVIRON_USER=${R_ENVIRON_USER}
 
 # Start R-Server
 singularity exec --cleanenv \
                  --scratch /run,/var/lib/rstudio-server \
-                 --workdir ${workdir}/rserver \
+                 --workdir ${workdir}/singularity \
+		 --bind ${workdir}/tmp \
+		 --bind ${workdir}/rserver \
 		 --bind ${workdir}/rserver/rsession.sh:/etc/rstudio/rsession.sh \
-		 --bind ${workdir}/tmp:/tmp \
                  ${SINGULARITY_IMAGE} \
     rserver --www-port ${PORT} \
             --auth-none=0 \
