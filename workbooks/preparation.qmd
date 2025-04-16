@@ -1,0 +1,27 @@
+---
+title: "Preparation"
+---
+
+## Set up basic things
+
+- connect to wlan
+- connect to home directory (windows: connect in explorer, linux: sshfs, mac: sshfs or mac explorer)
+- open a file in file explorer
+- explore home directory (windows/mac explorer?), also show training directory
+- handout so that they can check
+- set up ssh (host name, user, password, tunnel, proxy?)
+
+## Start RStudio server
+
+- login to biocluster4
+- submit rstudio server batch script (only once, runs for three days)
+- check if rstudio server is running, see log file, then (open browser, localhost:8787, user:password)
+
+
+## Intro to RStudio
+
+- Load the training project
+
+Start rserver
+
+

@@ -1,0 +1,193 @@
+---
+title: "The Dataset and the Seurat object"
+format:
+  revealjs:
+    smaller: true
+    scrollable: true
+    theme: white
+    df-print: kable
+---
+
+# Our dataset
+
+First we have a look at the dataset we are using for this training.
+
+## Overview
+
+We use a mouse brain dataset from [10x Genomics](https://www.10xgenomics.com/):
+
+-   Dataset was downloaded from [here](https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he)
+-   Male C57BL/6 mouse, 8 weeks
+-   Brain tissue block (FFPE)
+-   Visium HD Spatial Gene Expression prep
+-   Illumina NovaSeq 6000, \~300mio reads
+-   Spaceranger was already run
+
+The dataset is in the folder `datasets/visiumhd_mouse_brain` of the project directory. To download it again, run script `download.R` script that is also in the folder.
+
+## Dataset files
+
+Let us have a look at the dataset. These results are mostly informative:
+
+- `web_summary.html`: QC report in HTML format
+- `metrics_summary.csv`: QC report in CSV format
+- `cloupe_008um.cloupe`: Loupe file for visualizing the data in Loupe Browser
+- `spatial`: Folder containing the images
+- `molecule_info.h5`: File with information about reads and molecules (H5 format)
+- `feature_slice.h5`: File for high-performance data access of 2 µm bins
+
+These results contain the input for our analysis:
+
+- `binned_outputs`: Folder containing results for different bin sizes
+  - `square_002um`: 2µm binned output
+  - `square_008um`: 8µm binned output
+  - `square_0016um`: 16µm binned output
+  
+By default, Spaceranger groups the data into square bins of 2, 8, and 16 µm - the resolution.
+
+## Binned results
+
+Let us have a look at `square_008um`. Again, these results are mostly informative:
+
+- `analysis`: Folder containing Spaceranger analysis results
+- `cloupe.cloupe`: Loupe file for visualizing the data in Loupe Browser
+  
+These results contain the files for all bins under tissue. This is what we want to analyse:
+  
+- `filtered_feature_bc_matrix` / : Counts per bin and gene as directory or H5 file
+- `spatial`: Folder containing the images and the positions of the bins on the tissue
+
+Just for completeness, there are also results for all bins (tissue or no tissue):
+
+- `raw_feature_bc_matrix` / `raw_feature_bc_matrix.h5`: Counts as directory or H5 file
+
+## Counts directory
+
+Let us have look at the `filtered_feature_bc_matrix` directory. It contains three files:
+
+- The `barcodes.tsv.gz` file contains the names of the bins. Here are the first lines:
+
+```{r}
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/barcodes.tsv.gz",
+           header = FALSE, nrows = 3)
+```
+
+- The `features.tsv.gz` file contains the names of the genes. Here are the first lines:
+
+```{r}
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz",
+           header = FALSE, nrows = 3)
+```
+
+--
+
+- The `matrix.mtx.gz` file contains the actual counts data. Here are the first lines:
+
+```{r}
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/matrix.mtx.gz",
+           skip = 2, nrows = 5, header = FALSE, sep = " ")
+```
+
+- The first row contains the total number of genes, bins and counts.
+- All other rows contain the gene index (`features.tsv.gz`), bin index (`barcodes.tsv.gz`) and the count value.
+- Example row 2: The gene #160 (Uxs1) has in bin #1 (s_008um_00301_00321-1	) a count of 1.
+- Only non-zero counts are stored.
+
+# Seurat
+
+The R package [Seurat](https://satijalab.org/seurat/) is a popular software for single-cell and spatial analysis. We use it to store and analyse the data.
+
+## Import the data into Seurat
+
+First we load the Seurat package so that we can use it.
+
+```{r}
+library(Seurat)
+```
+
+
+Then we load our data for 8 and 16µm bins into an Seurat object.
+
+```{r}
+sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", 
+                     bin.size = c(8, 16))
+```
+
+Let us check what is in the Seurat object:
+
+```{r}
+sc
+```
+
+<!--
+Oral exercise:
+- How many assays are in the dataset?
+- How many images are in the dataset?
+- Why always two?
+-->
+
+## What is stored in the Seurat object
+
+The Seurat object stores different components that are used for the analysis. The most important ones are:
+
+- assay data: gene expression, ATAC data, surface protein data ...
+- metadata for bins: cluster, sample, condition, ...
+- metadata for genes/features:  id, name, type, description, ...
+- reductions: PCA, UMAP, tSNE, ...
+- neighbors and graphs: for clustering
+- images: images as well as spatial coordinates (for different bin sizes)
+
+## Assay data
+
+We can list the assays with the `Assays` function:
+
+```{r}
+Assays(sc)
+```
+
+We can access an assay with the `GetAssay` function or with the `[[]]` syntax:
+
+```{r}
+GetAssay(sc, assay = "Spatial.008um")
+sc[["Spatial.008um"]]
+```
+
+<!--
+Oral exercise:
+- How many bins/cells are in the assay?
+- How many genes are in the assay?
+-->
+
+---
+
+An assay object stores data in different layers:
+
+- `counts`: raw counts
+- `data`: normalized counts
+- `scale.data`: normalized counts, centered and scaled
+
+We use the `GetAssayData` function to access the actual data:
+
+```{r}
+#| message: true
+options(max.print=5)
+GetAssayData(sc, assay = "Spatial.016um", layer = "counts")
+```
+
+You will see many dots (zeros) and a few integers representing the counts per gene per bin.
+
+## Bin metadata
+
+Metadata for the bins can be access with the `[[]]` syntax:
+
+```{r}
+sc[[]]
+```
+
+
+## Gene metadata
+
+## Images
+
+
+

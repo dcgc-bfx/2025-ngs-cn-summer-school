@@ -1,0 +1,28 @@
+project:
+  type: default
+  execute-dir: project
+  render:
+    - "*.qmd"
+    - "!CONTRIBUTIONG.md"
+    - "!LICENSE.md"
+    
+format:
+  html:
+    code-link: true
+    theme: serif 
+    toc: true
+    df-print: paged
+  revealjs:
+    smaller: true
+    scrollable: true
+    theme: serif
+    df-print: kable
+
+execute:
+  echo: true
+  eval: true
+  tidy: "styler"
+
+
+
+
