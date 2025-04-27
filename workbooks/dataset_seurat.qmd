@@ -74,39 +74,36 @@ Just for completeness, there are also results for all bins (tissue or no tissue)
 
 -   `raw_feature_bc_matrix` and `raw_feature_bc_matrix.h5`: Counts as directory/H5 file
 
-## Counts directory
+## Counts data
 
 Let us have look at the `filtered_feature_bc_matrix` directory. It contains three files:
 
 - The `barcodes.tsv.gz` file contains the names of the bins:
 
 ```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
-           header = FALSE, nrows = 3)
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", header = FALSE, nrows = 5)
 ```
 
-- The `features.tsv.gz` file contains the names of the genes:
+- The `features.tsv.gz` file contains the Ensembl id, symbols and types of genes:
 
 ```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz", 
-           header = FALSE, nrows = 3)
-```
-
----
-
-```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/matrix.mtx.gz", 
-           skip = 2, nrows = 8, header = FALSE, sep = " ")
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", header = FALSE, nrows = 5)
 ```
 
 - The `matrix.mtx.gz` file contains the actual counts data:
-  -   The first row contains the total number of genes, bins and counts.
-  -   All other rows contain the gene index (`features.tsv.gz`), bin index (`barcodes.tsv.gz`) and the count value.
-  -   Only non-zero counts are stored.
+```{r}
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", skip = 2, nrows = 5, header = FALSE, sep = " ")
+```
 
+  - The first row contains the total number of genes, bins and counts.
+  - All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
+  - Only non-zero counts are stored.
+
+<!--
 - Example: 
-  - This dataset has 19,059 genes, 393,543 bins and 79,334,533 counts.
-  - Row 2: Gene #**160** (Uxs1) has in bin #**1** (s_008um_00301_00321-1) a count of **1**.
+  - This dataset has 19,059 genes, 98,917 bins and 68,259,814 counts.
+  - Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
+-->
 
 # The Seurat object
 
@@ -128,12 +125,6 @@ Let us check what is in the Seurat object:
 sc
 ```
 
-We can also get the total number of genes and bins in the object like this:
-
-```{r}
-dim(sc)
-```
-
 <!--
 Oral exercise:
 - How many assays are in the dataset?
@@ -145,6 +136,7 @@ Oral exercise:
 
 The Seurat object stores different components that are used for the analysis. The most important ones are:
 
+-   bins and genes
 -   assay data: gene expression, chromatin accessibility, surface proteins, ...
 -   metadata for bins: cluster, sample, condition, ...
 -   metadata for genes/features: id, name, type, description, ...
@@ -152,9 +144,26 @@ The Seurat object stores different components that are used for the analysis. Th
 -   neighbors and graphs: for clustering
 -   images: images as well as spatial coordinates (for different bin sizes)
 
+## Bins and genes
+
+We get the total number of genes and bins like this:
+
+```{r}
+dim(sc)
+```
+
+We can also list bins and genes that are stored in the object:
+
+```{r}
+Cells(sc) %>% head(5)
+Features(sc) %>% head(5)
+```
+
+Note that sometimes the more general terms barcodes (bins/cells/nuclei/...) and features (genes/proteins/peaks/...) are used. We will stick to bins and genes for this workshop.
+
 ## Assay data
 
-We can list the available assays with the `Assays` function:
+Assays store the actual data. We can list the available assays with the `Assays` function:
 
 ```{r}
 Assays(sc)
@@ -192,7 +201,7 @@ We use the `GetAssayData` function to access the actual data:
 
 ```{r}
 #| message: true
-GetAssayData(sc, assay = "RNA.016um", layer = "counts") %>% head(5)
+GetAssayData(sc, assay = "RNA.008um", layer = "counts") %>% tail(5)
 ```
 
 You will see many dots (zeros) and a few numbers representing the counts per gene per bin.
@@ -223,10 +232,10 @@ Most of the Seurat functions use the default assay of the object but also provid
 
 ## Bin metadata
 
-Bin metadata can be accessed using the `[[]]` syntax on the Seurat object:
+Bin metadata stores additional information about bins such as sample or condition. It can be accessed using the `[[]]` syntax on the Seurat object:
 
 ```{r}
-sc[[]] %>% head(3)
+sc[[]] %>% head(5)
 ```
 
 - `orig.ident`: the original identity of the bin
@@ -239,7 +248,6 @@ Individual columns can be accessed using the `$` syntax on the Seurat object:
 ```{r}
 sc$nCount_RNA.008um %>% head(3)
 ```
-
 
 ## Gene metadata
 
@@ -304,6 +312,7 @@ There is an image for each assay and bin size. To access an image, we can use th
 sc[["slice1.008um"]]
 ```
 
+
 ## Plotting
 
 We can already plot counts for genes in the `RNA.008um` assay as violin plots:
@@ -330,18 +339,13 @@ Finally, we can also plot the counts for the `RNA.016um` assay:
 DefaultAssay(sc) <- "RNA.016um"
 p1 <- VlnPlot(sc, features = c("Nrgn"), layer="counts", pt.size = 0) + NoLegend()
 p2 <- SpatialFeaturePlot(sc, features = c("Nrgn"), slot = "counts")
-p1 | p2
 DefaultAssay(sc) <- "RNA.008um"
+p1 | p2
 ```
 
 
 
 # Quality control
-
-```{r}
-knitr::knit_exit()
-```
-
 
 ## Motivation
 
@@ -382,8 +386,6 @@ We identify low-quality bins with less than 30 and more than 2000 counts and hig
 ```{r}
 filtered_bins_counts <- WhichCells(sc, 
                                    expression = nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
-head(filtered_bins_counts, 5)
-
 SpatialDimPlot(sc, cells.highlight = filtered_bins_counts) + NoLegend()
 ```
 
@@ -429,8 +431,6 @@ We identify low-quality bins with more than 30% mitochondrial content and highli
 ```{r}
 filtered_bins_mito <- WhichCells(sc,
                                   expression = pMito_RNA.008um > 30)
-head(filtered_bins_mito, 5)
-
 SpatialDimPlot(sc, cells.highlight = filtered_bins_mito) + NoLegend()
 ```
 
@@ -456,7 +456,7 @@ sc[["RNA.008um"]]
 Further we remove genes that are only expressed in a few bins. To do this, we first get the number of non-zero counts per row/gene for our `RNA.008um` assay.
 
 ```{r}
-counts <- GetAssayData(sc, assay = "RNA.008um", layer = "counts")
+counts <- GetAssayData(sc, layer = "counts")
 genes_expressed <- rowSums(counts > 0)
 head(genes_expressed, 5)
 ```
@@ -484,16 +484,76 @@ sc[["RNA.008um"]]
 
 ## Recommendations
 
-- a
-- b
+- Determine filter threshold for each dataset individually (there are no universal thresholds)
+- Set sample-specific filter criteria (samples may differ)
+- Make sure to check the spatial distribution of filtered bins to avoid removing spatial patterns
+- At the beginning, run a full analysis (until clustering) without filtering 
+  - Low-quality bins often cluster together
+  - Plot QC metrics per cluster and identify clusters without or with ambiguous cell type
+  - Then adjust filtering criteria accordingly and repeat
+- Advanced: use tools that include neighboring bins (e.g [SpotSweeper](https://github.com/MicTott/SpotSweeper))
 
 # Preprocessing
 
-Once we have removed low-quality bins, we can proceed with the preprocessing of the data. This includes normalization, scaling and selection of variable genes.
+Once we have removed low-quality bins, we can proceed with the preprocessing of the data: 
+
+- normalization
+- identification of variable genes
+- centering and scaling of the variable genes
+- dimensionality reduction based on the variable genes
 
 ## Normalization
 
-## Variable Features
+Raw counts are influenced by the library size (sequencing depth of the bin) and therefore difficult to interpret. We run a library size-based normalization to remove this effect:
+
+- Counts for each cell are divided by the total counts for that cell and multiplied by 10000
+- These "counts per 10000" are then log-transformed using the natural logarithm (including a pseudocount of 1)
+
+```{r}
+sc <- NormalizeData(sc, normalization.method = "LogNormalize", scale.factor = 10000)
+```
+
+This creates a new layer in the assay object called `data` that contains the normalized counts:
+
+```{r}
+sc[["RNA.008um"]]
+```
+
+We can inspect the normalized counts with the `GetAssayData` function:
+
+```{r}
+GetAssayData(sc, layer = "data") %>% tail(3)
+```
+
+---
+
+Alternatives:
+
+XXX
+
+## Highly-variable genes
+
+Next we select a set of genes that is 'highly variable' (HVG) in expression across bins. These genes will be used for further downstream analyses such as dimensionality reduction and clustering because they are more informative than other genes.
+
+We use the `FindVariableFeatures` function to identify the top 2000 HVGs:
+
+
+```{r}
+sc <- FindVariableFeatures(sc, selection.method = "vst", nfeatures = 2000)
+```
+
+```{r}
+top10 <- VariableFeatures(sc) %>% head(10)
+top10
+```
+
+
+```{r}
+p <- VariableFeaturePlot(sc, selection.method = "vst")
+p <- LabelPoints(plot = p, points = top10, repel = TRUE)
+p
+```
+
 
 ## 
 

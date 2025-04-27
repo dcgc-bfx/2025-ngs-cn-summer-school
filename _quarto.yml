@@ -1,28 +1,38 @@
 project:
-  type: default
-  execute-dir: project
+  type: "default"
+  execute-dir: "project"
   render:
     - "workbooks/dataset_seurat.qmd"
     
 format:
   html:
-    theme: serif
+    theme: "serif"
     knitr:
       opts_chunk:
         echo: true
         warning: false
+        fig-width: 8
+        fig-height: 5
         dev: "CairoPNG"
+        cache: true
+        cache-path: "cache/dataset_seurat/html"
+        cache-lazy: false
   revealjs:
     theme:
-    - serif
+    - "serif"
     - "css/revealjs.scss"
     smaller: true
     auto-stretch: false
-    df-print: default
+    df-print: "default"
     knitr:
       opts_chunk:
         echo: true
         warning: false
+        collapse: true
+        fig-width: 8
+        fig-height: 5
         dev: "CairoPNG"
-
+        cache: true
+        cache-path: "cache/dataset_seurat/revealjs"
+        cache-lazy: false
 
