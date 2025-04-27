@@ -2,27 +2,27 @@ project:
   type: default
   execute-dir: project
   render:
-    - "*.qmd"
-    - "!CONTRIBUTIONG.md"
-    - "!LICENSE.md"
+    - "workbooks/dataset_seurat.qmd"
     
 format:
   html:
-    code-link: true
-    theme: serif 
-    toc: true
-    df-print: paged
-  revealjs:
-    smaller: true
-    scrollable: true
     theme: serif
-    df-print: kable
-
-execute:
-  echo: true
-  eval: true
-  tidy: "styler"
-
-
+    knitr:
+      opts_chunk:
+        echo: true
+        warning: false
+        dev: "CairoPNG"
+  revealjs:
+    theme:
+    - serif
+    - "css/revealjs.scss"
+    smaller: true
+    auto-stretch: false
+    df-print: default
+    knitr:
+      opts_chunk:
+        echo: true
+        warning: false
+        dev: "CairoPNG"
 
 

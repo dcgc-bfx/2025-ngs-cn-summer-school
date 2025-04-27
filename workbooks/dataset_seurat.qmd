@@ -1,12 +1,25 @@
 ---
 title: "The Dataset and the Seurat object"
-format:
-  revealjs:
-    smaller: true
-    scrollable: true
-    theme: white
-    df-print: kable
+format: revealjs
 ---
+
+- https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html
+
+# Preparation
+
+## Loading libraries
+
+We load some important libraries.
+
+```{r}
+#| message: false
+
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(magrittr)
+```
 
 # Our dataset
 
@@ -19,7 +32,7 @@ We use a mouse brain dataset from [10x Genomics](https://www.10xgenomics.com/):
 -   Dataset was downloaded from [here](https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he)
 -   Male C57BL/6 mouse, 8 weeks
 -   Brain tissue block (FFPE)
--   Visium HD Spatial Gene Expression prep
+-   Visium HD Spatial Gene Expression kit
 -   Illumina NovaSeq 6000, \~300mio reads
 -   Spaceranger was already run
 
@@ -29,94 +42,96 @@ The dataset is in the folder `datasets/visiumhd_mouse_brain` of the project dire
 
 Let us have a look at the dataset. These results are mostly informative:
 
-- `web_summary.html`: QC report in HTML format
-- `metrics_summary.csv`: QC report in CSV format
-- `cloupe_008um.cloupe`: Loupe file for visualizing the data in Loupe Browser
-- `spatial`: Folder containing the images
-- `molecule_info.h5`: File with information about reads and molecules (H5 format)
-- `feature_slice.h5`: File for high-performance data access of 2 µm bins
+-   `web_summary.html`: QC report in HTML format
+-   `metrics_summary.csv`: QC report in CSV format
+-   `cloupe_008um.cloupe`: Loupe file for visualizing the data in Loupe Browser
+-   `spatial`: Folder containing the images
+-   `molecule_info.h5`: File with information about reads and molecules (H5 format)
+-   `feature_slice.h5`: File for high-performance data access of 2 µm bins
 
 These results contain the input for our analysis:
 
-- `binned_outputs`: Folder containing results for different bin sizes
-  - `square_002um`: 2µm binned output
-  - `square_008um`: 8µm binned output
-  - `square_0016um`: 16µm binned output
-  
-By default, Spaceranger groups the data into square bins of 2, 8, and 16 µm - the resolution.
+-   `binned_outputs`: Folder containing results for different bin sizes
+    -   `square_002um`: 2µm binned output
+    -   `square_008um`: 8µm binned output
+    -   `square_0016um`: 16µm binned output
+
+By default, Spaceranger groups the data into square bins of 2, 8 and 16 µm - the resolution. However, these can be changed in the Spaceranger settings.
 
 ## Binned results
 
-Let us have a look at `square_008um`. Again, these results are mostly informative:
+Let us have a look at `square_008um`. These results are mostly informative:
 
-- `analysis`: Folder containing Spaceranger analysis results
-- `cloupe.cloupe`: Loupe file for visualizing the data in Loupe Browser
-  
+-   `analysis`: Folder containing Spaceranger analysis results
+-   `cloupe.cloupe`: Loupe file for visualizing the data in Loupe Browser
+
 These results contain the files for all bins under tissue. This is what we want to analyse:
-  
-- `filtered_feature_bc_matrix` / : Counts per bin and gene as directory or H5 file
-- `spatial`: Folder containing the images and the positions of the bins on the tissue
+
+-   `filtered_feature_bc_matrix` and `filtered_feature_bc_matrix.h5` : Counts per bin and gene as directory/H5 file
+-   `spatial`: Folder containing the images and the positions of the bins on the tissue
 
 Just for completeness, there are also results for all bins (tissue or no tissue):
 
-- `raw_feature_bc_matrix` / `raw_feature_bc_matrix.h5`: Counts as directory or H5 file
+-   `raw_feature_bc_matrix` and `raw_feature_bc_matrix.h5`: Counts as directory/H5 file
 
 ## Counts directory
 
 Let us have look at the `filtered_feature_bc_matrix` directory. It contains three files:
 
-- The `barcodes.tsv.gz` file contains the names of the bins. Here are the first lines:
+- The `barcodes.tsv.gz` file contains the names of the bins:
 
 ```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/barcodes.tsv.gz",
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
            header = FALSE, nrows = 3)
 ```
 
-- The `features.tsv.gz` file contains the names of the genes. Here are the first lines:
+- The `features.tsv.gz` file contains the names of the genes:
 
 ```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz",
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/features.tsv.gz", 
            header = FALSE, nrows = 3)
 ```
 
---
-
-- The `matrix.mtx.gz` file contains the actual counts data. Here are the first lines:
+---
 
 ```{r}
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/matrix.mtx.gz",
-           skip = 2, nrows = 5, header = FALSE, sep = " ")
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_008um/filtered_feature_bc_matrix/matrix.mtx.gz", 
+           skip = 2, nrows = 8, header = FALSE, sep = " ")
 ```
 
-- The first row contains the total number of genes, bins and counts.
-- All other rows contain the gene index (`features.tsv.gz`), bin index (`barcodes.tsv.gz`) and the count value.
-- Example row 2: The gene #160 (Uxs1) has in bin #1 (s_008um_00301_00321-1	) a count of 1.
-- Only non-zero counts are stored.
+- The `matrix.mtx.gz` file contains the actual counts data:
+  -   The first row contains the total number of genes, bins and counts.
+  -   All other rows contain the gene index (`features.tsv.gz`), bin index (`barcodes.tsv.gz`) and the count value.
+  -   Only non-zero counts are stored.
 
-# Seurat
+- Example: 
+  - This dataset has 19,059 genes, 393,543 bins and 79,334,533 counts.
+  - Row 2: Gene #**160** (Uxs1) has in bin #**1** (s_008um_00301_00321-1) a count of **1**.
 
-The R package [Seurat](https://satijalab.org/seurat/) is a popular software for single-cell and spatial analysis. We use it to store and analyse the data.
+# The Seurat object
+
+The R package [Seurat](https://satijalab.org/seurat/) is a popular software for single-cell and spatial analysis. Alternatives are the R package [SingleCellExperiment](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html) or the python [scanpy](https://squidpy.readthedocs.io/en/stable/) package.
 
 ## Import the data into Seurat
 
-First we load the Seurat package so that we can use it.
+First we load our data for 8 and 16µm bins into an Seurat object.
 
 ```{r}
-library(Seurat)
-```
-
-
-Then we load our data for 8 and 16µm bins into an Seurat object.
-
-```{r}
-sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", 
-                     bin.size = c(8, 16))
+sc <- Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size = c(8, 16), assay = "RNA")
+sc$orig.ident <- "brain"
+Idents(sc) <- "brain"
 ```
 
 Let us check what is in the Seurat object:
 
 ```{r}
 sc
+```
+
+We can also get the total number of genes and bins in the object like this:
+
+```{r}
+dim(sc)
 ```
 
 <!--
@@ -130,26 +145,33 @@ Oral exercise:
 
 The Seurat object stores different components that are used for the analysis. The most important ones are:
 
-- assay data: gene expression, ATAC data, surface protein data ...
-- metadata for bins: cluster, sample, condition, ...
-- metadata for genes/features:  id, name, type, description, ...
-- reductions: PCA, UMAP, tSNE, ...
-- neighbors and graphs: for clustering
-- images: images as well as spatial coordinates (for different bin sizes)
+-   assay data: gene expression, chromatin accessibility, surface proteins, ...
+-   metadata for bins: cluster, sample, condition, ...
+-   metadata for genes/features: id, name, type, description, ...
+-   dimensionality reductions: PCA, UMAP, tSNE, ...
+-   neighbors and graphs: for clustering
+-   images: images as well as spatial coordinates (for different bin sizes)
 
 ## Assay data
 
-We can list the assays with the `Assays` function:
+We can list the available assays with the `Assays` function:
 
 ```{r}
 Assays(sc)
 ```
 
-We can access an assay with the `GetAssay` function or with the `[[]]` syntax:
+An assay can be accessed with the `GetAssay` function or with the `[[]]` syntax:
 
 ```{r}
-GetAssay(sc, assay = "Spatial.008um")
-sc[["Spatial.008um"]]
+GetAssay(sc, assay = "RNA.008um")
+sc[["RNA.008um"]]
+```
+
+We can also get the number of genes and bins for the assay like this:
+
+```{r}
+assay <- GetAssay(sc, assay = "RNA.008um")
+dim(assay)
 ```
 
 <!--
@@ -160,34 +182,319 @@ Oral exercise:
 
 ---
 
-An assay object stores data in different layers:
+The assay object stores data in different layers:
 
-- `counts`: raw counts
-- `data`: normalized counts
-- `scale.data`: normalized counts, centered and scaled
+-   `counts`: raw counts
+-   `data`: normalized counts
+-   `scale.data`: normalized counts, centered and scaled
 
 We use the `GetAssayData` function to access the actual data:
 
 ```{r}
 #| message: true
-options(max.print=5)
-GetAssayData(sc, assay = "Spatial.016um", layer = "counts")
+GetAssayData(sc, assay = "RNA.016um", layer = "counts") %>% head(5)
 ```
 
-You will see many dots (zeros) and a few integers representing the counts per gene per bin.
+You will see many dots (zeros) and a few numbers representing the counts per gene per bin.
+
+---
+
+The Seurat object has a default/active assay. We can check it with the `DefaultAssay` function:
+
+```{r}
+DefaultAssay(sc)
+```
+
+We can also switch to another assay:
+
+```{r}
+DefaultAssay(sc) <- "RNA.016um"
+DefaultAssay(sc)
+```
+
+For now, we use the assay `RNA.008um` for our analysis.
+
+```{r}
+DefaultAssay(sc) <- "RNA.008um"
+DefaultAssay(sc)
+```
+
+Most of the Seurat functions use the default assay of the object but also provide an `assay=` argument to specify another assay.
 
 ## Bin metadata
 
-Metadata for the bins can be access with the `[[]]` syntax:
+Bin metadata can be accessed using the `[[]]` syntax on the Seurat object:
 
 ```{r}
-sc[[]]
+sc[[]] %>% head(3)
+```
+
+- `orig.ident`: the original identity of the bin
+- `nCount_RNA.008um`: the number of counts in 8µm bins
+- `nFeature_RNA.008um`: the number of genes in 8µm bins
+...
+
+Individual columns can be accessed using the `$` syntax on the Seurat object:
+
+```{r}
+sc$nCount_RNA.008um %>% head(3)
 ```
 
 
 ## Gene metadata
 
+Gene metadata can be accessed using the `[[]]` syntax on an Seurat assay object:
+
+```{r}
+#| message: true
+
+assay <- GetAssay(sc, assay = "RNA.008um")
+assay[[]] %>% head(5)
+```
+
+There is currently no gene metadata for this Seurat assay object. 
+
+If available, individual columns can be accessed using the `$` syntax on the Seurat assay object.
+
+## Dimensionality reductions
+
+We can list the available reductions with the `Reductions` function:
+
+```{r}
+Reductions(sc)
+```
+
+There are currently no reductions in this Seurat object. If available, a reduction can be accessed with the `Reductions` function or with the `[[]]` syntax.
+
+```{r}
+# Reductions(sc, slot = "pca")
+# sc[["pca"]]
+```
+
+## Neighbors and graphs
+
+We can list computed neighbors and graphs with the `Neighbors` and `Graphs` functions:
+
+```{r}
+Neighbors(sc)
+Graphs(sc)
+```
+
+There are currently no neighbors or graphs in this Seurat object. If available, a neighbor or graph can be accessed with the `Neighbors` or `Graphs` function or with the `[[]]` syntax.
+
+```{r}
+# Neighbors(sc, slot = "RNA.nn")
+# sc[["RNA.nn"]]
+
+# Graphs(sc, slot = "RNA_nn")
+# sc[["RNA_nn"]]
+```
+
 ## Images
 
+For spatial data, images are stored in the Seurat object. List the available images with the `Images` function:
+
+```{r}
+Images(sc)
+```
+
+There is an image for each assay and bin size. To access an image, we can use the `[[]]` syntax:
+
+```{r}
+sc[["slice1.008um"]]
+```
+
+## Plotting
+
+We can already plot counts for genes in the `RNA.008um` assay as violin plots:
+
+```{r}
+VlnPlot(sc, features = c("Nrgn", "Igf2", "Hap1"), layer="counts", pt.size = 0) + NoLegend()
+```
+
+Note that the counts are still not normalized/transformed which makes it hard to interpret them.
+
+---
+
+We can also plot the counts of these genes in spatial context:
+
+```{r}
+SpatialFeaturePlot(sc, features = c("Nrgn", "Igf2", "Hap1"), slot = "counts")
+```
+
+---
+
+Finally, we can also plot the counts for the `RNA.016um` assay:
+
+```{r}
+DefaultAssay(sc) <- "RNA.016um"
+p1 <- VlnPlot(sc, features = c("Nrgn"), layer="counts", pt.size = 0) + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features = c("Nrgn"), slot = "counts")
+p1 | p2
+DefaultAssay(sc) <- "RNA.008um"
+```
+
+
+
+# Quality control
+
+```{r}
+knitr::knit_exit()
+```
+
+
+## Motivation
+
+Quality control (QC) is used to identify and remove low-quality bins from the dataset before further analysis. 
+
+Low-quality bins can be the result due to problems during reverse transcription, PCR amplification or library preparation. They can also be the result of cell damage during the experiment, e.g. when the tissue already contains a lot of dead cells.
+
+These bins need to be removed prior to further analysis because they can negatively influence the downstream analyses. For example, problematic bins could show up as separate clusters and be misidentified as distinct cell types.
+
+## QC metrics
+
+Low-quality bins can be identified by a few metrics, including:
+
+-  number of genes
+-  number of counts
+-  mitochondrial content
+
+We plot these metrics as distribution and also in spatial context to get an idea of the sample quality and to identify thresholds for filtering.
+
+TODO: SpotSweeper?
+
+## Number of counts
+
+First we plot the number of counts per bin.
+
+```{r}
+p1 <- VlnPlot(sc, features = "nCount_RNA.008um", pt.size = 0) + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features = "nCount_RNA.008um") + NoLegend()
+p1 | p2
+
+summary(sc$nCount_RNA.008um)
+```
+
+---
+
+We identify low-quality bins with less than 30 and more than 2000 counts and highlight them in spatial context. We expect that the filtered bins should not follow spatial patterns.
+
+```{r}
+filtered_bins_counts <- WhichCells(sc, 
+                                   expression = nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
+head(filtered_bins_counts, 5)
+
+SpatialDimPlot(sc, cells.highlight = filtered_bins_counts) + NoLegend()
+```
+
+## Number of genes
+
+Secondly, we plot the number of genes per bin.
+
+```{r}
+p1 <- VlnPlot(sc, features = "nFeature_RNA.008um", pt.size = 0) + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features = "nFeature_RNA.008um") + NoLegend()
+p1 | p2
+
+summary(sc$nFeature_RNA.008um)
+```
+
+---
+
+We identify low-quality bins with less than 30 and more than 1000 genes and highlight them in spatial context. We expect that the filtered bins should not follow spatial patterns.
+
+```{r}
+filtered_bins_genes <- WhichCells(sc,
+                                  expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
+
+SpatialDimPlot(sc, cells.highlight = filtered_bins_genes) + NoLegend()
+```
+
+## Mitochondrial content
+
+Finally we calculate and plot the mitochondrial content per bin.
+
+```{r}
+sc <- PercentageFeatureSet(sc, pattern = "^mt-", col.name = "pMito_RNA.008um") 
+
+p1 <- VlnPlot(sc, features = "pMito_RNA.008um", pt.size = 0) + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features = "pMito_RNA.008um") + NoLegend()
+p1 | p2
+```
+
+---
+
+We identify low-quality bins with more than 30% mitochondrial content and highlight them in spatial context. We expect that the filtered bins should not follow spatial patterns.
+
+```{r}
+filtered_bins_mito <- WhichCells(sc,
+                                  expression = pMito_RNA.008um > 30)
+head(filtered_bins_mito, 5)
+
+SpatialDimPlot(sc, cells.highlight = filtered_bins_mito) + NoLegend()
+```
+
+## Filtering of bins
+
+Finally, when we have good thresholds, we can filter the dataset. Here is the `RNA.008um` assay object before filtering:
+
+```{r}
+dim(sc[["RNA.008um"]])
+```
+
+We use the `subset` function to remove the low-quality bins and then print the assay object after the filtering:
+
+```{r}
+sc <- subset(sc, nCount_RNA.008um < 30 | nCount_RNA.008um > 2000, invert = TRUE)
+sc <- subset(sc, nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000, invert = TRUE)
+sc <- subset(sc, pMito_RNA.008um > 30, invert = TRUE)
+sc[["RNA.008um"]]
+```
+
+## Filtering of genes
+
+Further we remove genes that are only expressed in a few bins. To do this, we first get the number of non-zero counts per row/gene for our `RNA.008um` assay.
+
+```{r}
+counts <- GetAssayData(sc, assay = "RNA.008um", layer = "counts")
+genes_expressed <- rowSums(counts > 0)
+head(genes_expressed, 5)
+```
+
+Let us quickly summarize these numbers. Most of the genes are expressed in at least 30 bins, on average in 4063 bins and maximum in 283994 bins.
+
+```{r}
+summary(genes_expressed)
+```
+
+We keep genes are expressed in at least 10 bins. This is a very low threshold and we can filter more strictly depending on the dataset:
+
+```{r}
+genes_expressed <- genes_expressed[genes_expressed > 10]
+length(genes_expressed)
+```
+
+Then, we remove the genes from the `RNA.008um` assay object using the `subset` function: 
+
+```{r}
+sc[["RNA.008um"]]
+sc[["RNA.008um"]] <- subset(sc[["RNA.008um"]], features = names(genes_expressed))
+sc[["RNA.008um"]]
+```
+
+## Recommendations
+
+- a
+- b
+
+# Preprocessing
+
+Once we have removed low-quality bins, we can proceed with the preprocessing of the data. This includes normalization, scaling and selection of variable genes.
+
+## Normalization
+
+## Variable Features
+
+## 
 
 
