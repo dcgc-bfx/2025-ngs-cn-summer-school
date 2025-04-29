@@ -14,7 +14,7 @@ format:
         fig-width: 8
         fig-height: 5
         dev: "CairoPNG"
-        cache: true
+        cache: false
         cache-path: "cache/dataset_seurat/html"
         cache-lazy: false
   revealjs:
