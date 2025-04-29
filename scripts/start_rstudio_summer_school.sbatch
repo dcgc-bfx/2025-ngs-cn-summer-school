@@ -6,7 +6,7 @@
 #SBATCH --mem=24000
 #SBATCH --output=rstudio_summer_school_login.txt
 #SBATCH --error=rstudio_summer_school_errors.txt
-#SBATCH --job-name=kasa397b
+#SBATCH --job-name=ngscnsummerschool
 #SBATCH --partition=ngs.q
 #SBATCH --nodelist=compute-2-3            
 
@@ -18,13 +18,14 @@
 # Git clone repository
 # Download data
 # Create Rstudio project
+# Add download link for sif
 
 ###################################                       
 # USER-SPECIFIC SETTINGS (CHANGE) #
 ###################################
                     
 # Set the user login (needs to be the same as above in output, error and job-name
-USER=kasa397b
+USER=$(whoami)
 
 # Set a generic password
 PASSWORD=notsafe
@@ -33,7 +34,7 @@ PASSWORD=notsafe
 PORT=9002
 
 # Set path/url to Singularity image
-SINGULARITY_IMAGE=/group/sequencing/bfx/scripts/andreasp/2025-ngs-cn-summer-school/singularity/Singularity.sif
+SINGULARITY_IMAGE=singularity.sif
 
 ########################################################################
 # COPIED/ADAPTED FROM: https://rocker-project.org/use/singularity.html #
