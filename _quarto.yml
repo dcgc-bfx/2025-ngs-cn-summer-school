@@ -6,17 +6,19 @@ project:
     
 format:
   html:
-    theme: "serif"
+    theme:
+    - "serif"
+    - "css/html.scss"
     knitr:
       opts_chunk:
         echo: true
         warning: false
         fig-width: 8
         fig-height: 5
-        dev: "CairoPNG"
-        cache: false
-        cache-path: "cache/dataset_seurat/html"
-        cache-lazy: false
+        dev:
+        - "png"
+        dev.args:
+          type: "cairo"
   revealjs:
     theme:
     - "serif"
@@ -31,8 +33,8 @@ format:
         collapse: true
         fig-width: 8
         fig-height: 5
-        dev: "CairoPNG"
-        cache: false
-        cache-path: "cache/dataset_seurat/revealjs"
-        cache-lazy: false
+        dev:
+        - "png"
+        dev.args:
+          type: "cairo"
 
