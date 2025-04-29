@@ -24,8 +24,30 @@ library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 
 # Colours (for perhaps in the future :P)
-# options(ggplot2.discrete.colour= c("red", "#af01ef"))
+our_colours = ggsci::pal_ucscgb()(50)
+options(ggplot2.discrete.colour=our_colours)
+options(ggplot2.discrete.fill=our_colours)
 ```
+
+::: {.callout-note}
+Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
+:::
+
+::: {.callout-tip}
+Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
+:::
+
+::: {.callout-caution}
+Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
+:::
+
+::: {.callout-warning}
+Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
+:::
+
+::: {.callout-important}
+Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
+:::
 
 # Our Dataset
 
@@ -511,7 +533,7 @@ Raw counts are influenced by the library size (sequencing depth of the bin) and 
 We use the `ScaleData` function to normalize the data. This creates a new layer in the assay object called `data` that contains the normalized counts:
 
 ```{r}
-sc = NormalizeData(sc, normalization.method="LogNormalize", scale.factor=10000, verbose=TRUE)
+sc = NormalizeData(sc, normalization.method="LogNormalize", scale.factor=10000)
 sc[["RNA.008um"]]
 ```
 
@@ -532,11 +554,11 @@ XXX
 
 Next we select a set of genes that is 'highly variable' (HVG) in expression across bins. These genes will be used for further downstream analyses such as dimensionality reduction and clustering because they are more informative than other genes.
 
-We use the `FindVariableFeatures` function to identify the top 1000 HVGs:
+We use the `FindVariableFeatures` function to identify the top 2000 HVGs:
 
 
 ```{r}
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000, verbose=TRUE)
+sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000)
 ```
 
 ```{r}
@@ -557,7 +579,7 @@ The next step is to center and scale the data. Different genes have different ex
 We use the `ScaleData` function to center and scale the data. This creates a new layer in the assay object called `scale.data` that contains the scaled counts:
 
 ```{r}
-sc = ScaleData(sc, features=VariableFeatures(sc), verbose=TRUE)
+sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="RNA.008um")
 ```
 
@@ -578,7 +600,7 @@ We use the SketchData function to create a sketch assay of 50,000 bins from the 
 
 ```{r}
 # we select 50,0000 cells and create a new 'sketch' assay
-sc = SketchData(sc, ncells=50000, method="LeverageScore", sketched.assay="sketch")
+sc = SketchData(sc, ncells=50000, features=VariableFeatures(sc), method="LeverageScore", sketched.assay="sketch")
 sc
 ```
 
@@ -591,8 +613,8 @@ GetAssay(sc, assay="sketch")
 It is already normalized but, as for the original assay, we need to identify variable genes and scale the data:
 
 ```{r}
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000, verbose=TRUE)
-sc = ScaleData(sc, features=VariableFeatures(sc), verbose=TRUE)
+sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000)
+sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="sketch")
 ```
 
@@ -604,45 +626,97 @@ Once that is done, we will run the next steps using the sketch assay.
 
 Last, we run an dimensionality reduction to convert the high-dimensional dataset into lower-dimensional one that can be easier analysed. We are using principle component analysis (PCA) which is a linear method and find the directions of maximum variance in the data and projects the data onto these directions. The resulting set of variables is called principle components (PCs).
 
-We use the `RunPCA` function to calculate the top 50 principle components (PCs) for the data. This creates a new dimensionality reduction object called `pca`:
+We use the `RunPCA` function to calculate the top 50 principle components (PCs) for the data. This creates a new dimensionality reduction object called `pca.sketch`:
 
 ```{r}
-sc = RunPCA(sc, features=VariableFeatures(sc), npcs=50, verbose=TRUE, seed.use=1)
-Reductions(sc, slot="pca")
+sc = RunPCA(sc, reduction.name="pca.sketch", features=VariableFeatures(sc), npcs=50)
+Reductions(sc, slot="pca.sketch")
 ```
 
-We have now converted the 16907 genes into 50 PCs. We can plot the PCA results with the `DimPlot` function:
+We have now converted the 16907 genes into 50 PCs. We can plot PC1 vs PC2 with the `DimPlot` function:
 
 ```{r}
-DimPlot(sc, reduction="pca", dims=c(1, 2))
+DimPlot(sc, reduction="pca.sketch", dims=c(1, 2))
 ```
 
-Importantly, PCs are ordered by the amount of variance they explain, i.e., PC1 explain the most amount, PC2 the second-most, ... . Next we plot the variance explained by each PC with the `ElbowPlot` function as well as a scatter plot PC1 vs PC2:
+Importantly, PCs are ordered by the amount of variance they explain, i.e., PC1 explain the most amount, PC2 the second-most, ... . Next we plot the variance explained by each PC with the `ElbowPlot` function:
 
 ```{r}
-p1 = ElbowPlot(sc, ndims=50)
-p2 = DimPlot(sc, reduction="pca", group.by="orig.ident", label=TRUE)
+ElbowPlot(sc, reduction="pca.sketch", ndims=50)
 ```
 
 We see that the plot at some point reaches a plateau where additional PCs only explain small amounts of variance. This is the 'elbow' point and we use it to determine the number of PCs for further analysis. In addition, we can also have a look at which genes contribute the most to the PCs:
 
 ```{r}
-VizDimLoadings(sc, dims=1:4, nfeatures=10, balanced=TRUE)
+VizDimLoadings(sc, reduction="pca.sketch", dims=1:4, nfeatures=10, balanced=TRUE)
 ```
 
-In this case, we will use the first 20 PCs for downstream analyses.
+In addition to the elbow plot, the gene contributions can also help with identifying the number of PCs. For this workshop, we will use the first 30 PCs for all downstream analyses.
 
 # Clustering and visualization
 
+- a
+- b
+
+
 ## Clustering of the sketched dataset
 
+For clustering, Seurat applies a graph-based approach. In short, Seurat first identifies for each bin its k nearest neighbors based on euclidean distance in PCA space. Using this neighborhood information, it then builds a nearest-neighbors graph (NN) and an improved version called shared nearest neighbor (SNN) graph.
+
+We construct these graphs with the `FindNeighbors` function. We use the first 20 PCs as input and set the number of neighbors to 20:
+
 ```{r}
-
-sc = FindNeighbors(sc, reduction = "pca", dims = 1:20)
-sc = FindClusters(sc, cluster.name = "seurat_cluster.sketched", resolution = 3)
-sc = RunUMAP(sc, reduction = "pca", reduction.name = "umap.sketch", return.model = T, dims = 1:20)
-
+sc = FindNeighbors(sc, reduction="pca.sketch", dims=1:30, k.param=20)
+Graphs(sc)
 ```
+
+Seurat then splits the SNN graph into well-connected communities. It does this by iteratively grouping neighboring bins together while trying to optimize the modularity. Modularity is is a measure for connectivity in graphs and a high value indicates that the bins within a community are more connected to each other than to bins outside of the community. The final communities are called clusters.
+
+We run the `FindClusters` function and use the Leiden algorithm instead of the default Louvain algorithm (`algorithm=4`). The resolution of the clustering can be controlled with the `resolution` parameter. Higher values lead to more clusters. We use `resolution=1` which is a good starting point:
+
+```{r}
+sc = FindClusters(sc, cluster.name="seurat_clusters.sketch", resolution=1, algorithm=4)
+```
+
+The clusters are saved as column in the bin metadata. Let us summarise the clustering of the sketched dataset:
+
+```{r}
+summary(sc$seurat_clusters.sketch)
+```
+
+We have clustered the sketched dataset into 21 clusters. Note that we can provide multiple resolution values to test different clustering resolutions.
+
+## UMAP of the sketched dataset
+
+Additionally, we run a dimensionality reduction method called Uniform Manifold Approximation and Projection (UMAP). UMAP is a non-linear method that embeds high-dimensional data into 2D while trying to preserve the local structure of the data. It is often used for visualization. However it should be avoided to draw biological conclusions from the UMAP only without actual clustering.
+
+We run the `RunUMAP` function and use the first 20 PCs as input. This creates a new dimensionality reduction object called `umap.sketch`:
+
+```{r}
+sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch", dims=1:30, return.model=TRUE)
+```
+
+Note that `umap.sketch` is now the default dimensionality reduction. We can plot the clustering on the UMAP as well as in spatial context:
+
+```{r}
+p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
+p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=our_colours)
+p1 | p2
+```
+
+## Analysing the full dataset
+
+We now use the `ProjectData`function to project the cluster labels, PCA and UMAP, that we learned from the 50,000 sketched cells, to the entire dataset:
+
+```{r}
+sc = ProjectData(sc,
+                 sketched.assay="sketch", assay="RNA.008um", 
+                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
+                 umap.model="umap.sketch",
+                 refdata=list(seurat_clusters="sc$seurat_clusters.sketch"),
+                 dims=1:30)
+```
+
 
 # Other useful resources
 
