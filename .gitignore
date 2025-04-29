@@ -7,6 +7,9 @@
 .DS_Store
 2025-ngs-cn-summer-school.Rproj
 /.quarto/
-/book*/
-/*_freeze/
-/site_libs/
+/workbooks/cache/
+/workbooks/*_files/
+/workbooks/*html
+/scripts/rstudio_summer_school_errors.txt
+/scripts/rstudio_summer_school_login.txt
+/datasets/visiumhd_mouse_brain/
