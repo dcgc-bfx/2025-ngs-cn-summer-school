@@ -22,9 +22,9 @@ curl::curl_download(url = "https://cf.10xgenomics.com/samples/spatial-exp/3.0.0/
 
 # Unzip the tar.gz files
 untar(tarfile = "datasets/visiumhd_mouse_brain/spatial.tar.gz")
-unlink(basename(path = "datasets/visiumhd_mouse_brain/spatial.tar.gz"))
+unlink("datasets/visiumhd_mouse_brain/spatial.tar.gz")
 file.rename(from = "spatial", to = "datasets/visiumhd_mouse_brain/spatial")
 
 untar(tarfile = "datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
-unlink(basename(path = "datasets/visiumhd_mouse_brain/binned_outputs.tar.gz"))
+unlink("datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
 file.rename(from = "binned_outputs", to = "datasets/visiumhd_mouse_brain/binned_outputs")
