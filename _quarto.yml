@@ -3,20 +3,35 @@ project:
   execute-dir: "project"
   render:
     - "workbooks/dataset_seurat.qmd"
+
+####################
+# Execute defaults #
+####################
+execute: 
+  echo: true
+  warning: false
+  
+#################
+# Knitr options #
+#################
+knitr:
+  opts_chunk:
+    dpi: 300
+    fig-width: 8
+    fig-height: 5
+    dev:
+    - "png"
+    - "cairo_pdf"
+    dev.args:
+      png:
+        type: "cairo"
     
+##################
+# Format options #
+##################
 format:
   html:
     theme: "serif"
-    knitr:
-      opts_chunk:
-        echo: true
-        warning: false
-        fig-width: 8
-        fig-height: 5
-        dev: "CairoPNG"
-        cache: false
-        cache-path: "cache/dataset_seurat/html"
-        cache-lazy: false
   revealjs:
     theme:
     - "serif"
@@ -26,13 +41,5 @@ format:
     df-print: "default"
     knitr:
       opts_chunk:
-        echo: true
-        warning: false
         collapse: true
-        fig-width: 8
-        fig-height: 5
-        dev: "CairoPNG"
-        cache: false
-        cache-path: "cache/dataset_seurat/revealjs"
-        cache-lazy: false
 

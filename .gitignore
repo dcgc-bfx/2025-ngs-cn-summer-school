@@ -10,6 +10,7 @@
 /workbooks/cache/
 /workbooks/*_files/
 /workbooks/*html
+/workbooks/*rmarkdown
 /scripts/rstudio_summer_school_errors.txt
 /scripts/rstudio_summer_school_login.txt
 /datasets/visiumhd_mouse_brain/
