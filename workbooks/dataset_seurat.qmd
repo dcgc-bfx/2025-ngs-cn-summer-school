@@ -1,103 +1,98 @@
 ---
-title: "The Dataset and the Seurat object"
-format: revealjs
+title: "🧬 Spatial Transcriptomics Analysis"
+format: html
 ---
 
-- https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html
+# Welcome to the NGS-CN Summer School on Spatial Transcriptomics Analysis!
 
-# Preparation
+Spatial transcriptomics allows us to measure gene expression across tissue sections while preserving spatial information, helping us understand not just **what** genes are active, but **where** they are active.
 
-## Loading libraries
+In this practical session, we will explore how to analyze spatial transcriptomics data using **R** and **RStudio**. Whether you are new to spatial data or already familiar with single-cell workflows, this guide will walk you through the essential steps.
 
-We load some important libraries.
+Feel free to use your personal workbook to make notes, track your progress, and revisit it after this Summer School.
+
+## 📦 Setting up your R environment 
+
+Before diving into the data, we need to load a few important R packages. These libraries will provide the tools we need for analysis and visualization.
 
 ```{r}
+#| label: setup
 #| message: false
 
-library(Seurat)
-library(ggplot2)
-library(patchwork)
-library(dplyr)
-library(magrittr)
+library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
+library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
+library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 ```
 
-# Our dataset
+# Our Dataset
 
-First we have a look at the dataset we are using for this training.
+In this section, we will introduce the dataset we are using for this training session.
 
-## Overview
+## 📊 Dataset Overview
 
-We use a mouse brain dataset from [10x Genomics](https://www.10xgenomics.com/):
+We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com/):   
 
--   Dataset was downloaded from [here](https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he)
--   Male C57BL/6 mouse, 8 weeks
--   Brain tissue block (FFPE)
--   Visium HD Spatial Gene Expression kit
--   Illumina NovaSeq 6000, \~300mio reads
--   Spaceranger was already run
+* Source: Downloaded from [here](https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he)   
+* Sample: Male C57BL/6 mouse, 8 weeks old   
+* Tissue: Brain tissue block (Formalin-Fixed Paraffin-Embedded, or FFPE)   
+* Platform: Visium HD Spatial Gene Expression kit   
+* Sequencing: Illumina NovaSeq 6000, approximately 300 million reads   
+* Processing: Space Ranger was already run to process the raw data   
 
-The dataset is in the folder `datasets/visiumhd_mouse_brain` of the project directory. To download it again, run script `download.R` script that is also in the folder.
+The dataset is located in the `datasets/visiumhd_mouse_brain` directory within your project folder. If you need to download the dataset again, you can use the `datasets/download.R` script.
 
-## Dataset files
+## 📂 Dataset files
 
-Let us have a look at the dataset. These results are mostly informative:
+The dataset includes several files and folders:
 
--   `web_summary.html`: QC report in HTML format
--   `metrics_summary.csv`: QC report in CSV format
--   `cloupe_008um.cloupe`: Loupe file for visualizing the data in Loupe Browser
--   `spatial`: Folder containing the images
--   `molecule_info.h5`: File with information about reads and molecules (H5 format)
--   `feature_slice.h5`: File for high-performance data access of 2 µm bins
+* `web_summary.html`: Quality control (QC) report in HTML format
+* `metrics_summary.csv`: QC report in CSV format
+* `cloupe_008um.cloupe`: Loupe file for visualizing the data in the Loupe Browser
+* `molecule_info.h5`: H5 file with information about reads and molecules in the dataset
+* `feature_slice.h5`: H5 file for high-performance data access of 2 µm bins
+* `spatial`: Folder containing the tissue images
+* `binned_outputs` Folder containing results organized by different bin sizes
+   * `square_002um/`: Binned data with 2 µm resolution
+   * `square_008um/`: Binned data with 8 µm resolution
+   * `square_0016um/`: Binned data with 16 µm resolution
 
-These results contain the input for our analysis:
+The folder `binned_outputs` is relevant for our analysis. Space Ranger defaults to grouping the data into square bins of 2 µm, 8 µm, and 16 µm, though these bin sizes can be modified in the Space Ranger settings.
 
--   `binned_outputs`: Folder containing results for different bin sizes
-    -   `square_002um`: 2µm binned output
-    -   `square_008um`: 8µm binned output
-    -   `square_0016um`: 16µm binned output
+## 🔍 Focusing on `square_008um`
 
-By default, Spaceranger groups the data into square bins of 2, 8 and 16 µm - the resolution. However, these can be changed in the Spaceranger settings.
+Let us focus on the `square_008um/` folder, which contains the binned results at 8 µm resolution. This folder includes:
 
-## Binned results
+* `analysis/`: Results from Space Ranger analysis
+* `cloupe.cloupe`: Loupe file for visualizing the 8 µm binned data in Loupe Browser
+* `raw_feature_bc_matrix/`: Raw counts for all bins (tissue or no tissue)
+* `raw_feature_bc_matrix.h5`: As above, organized in H5 format
+* `filtered_feature_bc_matrix/`: Counts for all bins located under tissue, per bin and gene
+* `filtered_feature_bc_matrix.h5`: As above, organized in H5 format
+* `spatial/`:  Folder with images and information about the spatial locations of the bins on the tissue
 
-Let us have a look at `square_008um`. These results are mostly informative:
+The key files for our analysis are located in `filtered_feature_bc_matrix`. 
 
--   `analysis`: Folder containing Spaceranger analysis results
--   `cloupe.cloupe`: Loupe file for visualizing the data in Loupe Browser
+## 📈 Counts data
 
-These results contain the files for all bins under tissue. This is what we want to analyse:
+Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which includes three important files:
 
--   `filtered_feature_bc_matrix` and `filtered_feature_bc_matrix.h5` : Counts per bin and gene as directory/H5 file
--   `spatial`: Folder containing the images and the positions of the bins on the tissue
-
-Just for completeness, there are also results for all bins (tissue or no tissue):
-
--   `raw_feature_bc_matrix` and `raw_feature_bc_matrix.h5`: Counts as directory/H5 file
-
-## Counts data
-
-Let us have look at the `filtered_feature_bc_matrix` directory. It contains three files:
-
-- The `barcodes.tsv.gz` file contains the names of the bins:
+* `barcodes.tsv.gz`: Contains the names (or identifiers) for each of the bins in the dataset
+* `features.tsv.gz` Contains essential information about the genes, including their Ensembl IDs, symbols and gene types
+* `matrix.mtx.gz` Contains the actual counts data
+   * The first row contains the total number of genes, bins and counts.
+   * All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
+   * Only non-zero counts are stored.
 
 ```{r}
+# barcodes.tsv.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", header = FALSE, nrows = 5)
-```
 
-- The `features.tsv.gz` file contains the Ensembl id, symbols and types of genes:
-
-```{r}
+# features.tsv.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", header = FALSE, nrows = 5)
-```
 
-- The `matrix.mtx.gz` file contains the actual counts data:
-```{r}
+# matrix.mtx.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", skip = 2, nrows = 5, header = FALSE, sep = " ")
 ```
-
-  - The first row contains the total number of genes, bins and counts.
-  - All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
-  - Only non-zero counts are stored.
 
 <!--
 - Example: 
@@ -105,21 +100,23 @@ read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_f
   - Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
 -->
 
-# The Seurat object
+# The Seurat Object
 
-The R package [Seurat](https://satijalab.org/seurat/) is a popular software for single-cell and spatial analysis. Alternatives are the R package [SingleCellExperiment](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html) or the python [scanpy](https://squidpy.readthedocs.io/en/stable/) package.
+The R package [Seurat](https://satijalab.org/seurat/) is a widely used tool for single-cell and spatial transcriptomics analysis. It allows researchers to work with complex biological data and perform tasks like dimensionality reduction, clustering, and visualization. 
 
-## Import the data into Seurat
+Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/) package in Python. 
 
-First we load our data for 8 and 16µm bins into an Seurat object.
+## Importing the Data into Seurat
+
+The first step in analyzing your data is to import it into Seurat. Here, we load data for both 8µm and 16µm bins into a Seurat object: 
 
 ```{r}
-sc <- Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size = c(8, 16), assay = "RNA")
-sc$orig.ident <- "brain"
-Idents(sc) <- "brain"
+sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size=c(8, 16), assay="RNA")
+sc$orig.ident = "brain"
+Idents(sc) = "brain"
 ```
 
-Let us check what is in the Seurat object:
+Now, let us take a look at the Seurat object to understand its structure:
 
 ```{r}
 sc
@@ -132,54 +129,54 @@ Oral exercise:
 - Why always two?
 -->
 
-## What is stored in the Seurat object
+## What is Stored in the Seurat Object?
 
-The Seurat object stores different components that are used for the analysis. The most important ones are:
+The Seurat object organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. The key components include:
 
--   bins and genes
--   assay data: gene expression, chromatin accessibility, surface proteins, ...
--   metadata for bins: cluster, sample, condition, ...
--   metadata for genes/features: id, name, type, description, ...
--   dimensionality reductions: PCA, UMAP, tSNE, ...
--   neighbors and graphs: for clustering
--   images: images as well as spatial coordinates (for different bin sizes)
+- **Bins and genes**: These represent the spatial units (bins) and the genes that are being measured
+- **Assay data**: Contains the gene expression data, chromatin accessibility, surface proteins, etc.
+- **Metadata for bins**: Information about each bin (e.g., sample type, condition)
+- **Metadata for genes**: Includes gene IDs, names, types, and descriptions
+- **Dimensionality reductions**: Methods like PCA, UMAP, and tSNE that are used to reduce the complexity of the data
+- **Neighbors and graphs**: Information about the relatedness between bins
+- **Images**: Spatial coordinates and image data for visualizing the tissue
 
-## Bins and genes
+## Bins and Genes
 
-We get the total number of genes and bins like this:
+We can retrieve the total number of genes and bins stored in the Seurat object like this:
 
 ```{r}
 dim(sc)
 ```
 
-We can also list bins and genes that are stored in the object:
+We can also list the bins and genes contained in the Seurat object:
 
 ```{r}
 Cells(sc) %>% head(5)
 Features(sc) %>% head(5)
 ```
 
-Note that sometimes the more general terms barcodes (bins/cells/nuclei/...) and features (genes/proteins/peaks/...) are used. We will stick to bins and genes for this workshop.
+Note that sometimes the term **bin** is referred to as barcode, cell, nuclei, and the term **gene** is referred to as feature, protein, peak. We will stick to bins and genes for this workshop. 
 
 ## Assay data
 
-Assays store the actual data. We can list the available assays with the `Assays` function:
+Assays store the actual data, for example gene expression counts. We can list the available assays in the Seurat object:
 
 ```{r}
 Assays(sc)
 ```
 
-An assay can be accessed with the `GetAssay` function or with the `[[]]` syntax:
+To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
 
 ```{r}
-GetAssay(sc, assay = "RNA.008um")
+GetAssay(sc, assay="RNA.008um")
 sc[["RNA.008um"]]
 ```
 
-We can also get the number of genes and bins for the assay like this:
+We can also check the number of genes and bins in a specific assay like this:
 
 ```{r}
-assay <- GetAssay(sc, assay = "RNA.008um")
+assay = GetAssay(sc, assay="RNA.008um")
 dim(assay)
 ```
 
@@ -189,69 +186,64 @@ Oral exercise:
 - How many genes are in the assay?
 -->
 
----
+### Assay Layers
 
 The assay object stores data in different layers:
-
--   `counts`: raw counts
--   `data`: normalized counts
--   `scale.data`: normalized counts, centered and scaled
+* `counts`: Raw counts for each gene in each bin
+* `data`: Normalized counts for better comparability across bins
+* `scale.data`: Scaled data for better comparabiliity across genes
 
 We use the `GetAssayData` function to access the actual data:
 
 ```{r}
 #| message: true
-GetAssayData(sc, assay = "RNA.008um", layer = "counts") %>% tail(5)
+
+GetAssayData(sc, assay="RNA.008um", layer="counts") %>% tail(5)
 ```
 
-You will see many dots (zeros) and a few numbers representing the counts per gene per bin.
+Here, you will see a sparse matrix with many zeros (representing no counts) and a few non-zero counts for gene expression.
 
----
-
-The Seurat object has a default/active assay. We can check it with the `DefaultAssay` function:
+The Seurat object has a default/active assay that is used for most functions. To check the active assay, we can use:
 
 ```{r}
 DefaultAssay(sc)
 ```
 
-We can also switch to another assay:
+To change the active assay to another one, for example `"RNA.016um"`, use:
 
 ```{r}
-DefaultAssay(sc) <- "RNA.016um"
+DefaultAssay(sc) = "RNA.016um"
 DefaultAssay(sc)
 ```
 
-For now, we use the assay `RNA.008um` for our analysis.
+For this workshop, we will focus on the assay `"RNA.008um"` for our analysis:
 
 ```{r}
-DefaultAssay(sc) <- "RNA.008um"
+DefaultAssay(sc) = "RNA.008um"
 DefaultAssay(sc)
 ```
 
-Most of the Seurat functions use the default assay of the object but also provide an `assay=` argument to specify another assay.
+Most Seurat functions will automatically use the default assay, but you can always specify a different assay with the `assay=` argument.
 
-## Bin metadata
+## Bin Metadata
 
-Bin metadata stores additional information about bins such as sample or condition. It can be accessed using the `[[]]` syntax on the Seurat object:
+Bin metadata store additional information about each bin, such as the sample or condition. You can access this metadata using the `[[]]` syntax:
 
 ```{r}
 sc[[]] %>% head(5)
 ```
 
-- `orig.ident`: the original identity of the bin
-- `nCount_RNA.008um`: the number of counts in 8µm bins
-- `nFeature_RNA.008um`: the number of genes in 8µm bins
-...
+For example, the `orig.ident` column stores the original identity of the bin, and the `nCount_RNA.008um` and `nFeature_RNA.008um` columns store the number of counts and genes for the 8µm bins.
 
-Individual columns can be accessed using the `$` syntax on the Seurat object:
+You can access individual metadata columns like this:
 
 ```{r}
 sc$nCount_RNA.008um %>% head(3)
 ```
 
-## Gene metadata
+## Gene Metadata
 
-Gene metadata can be accessed using the `[[]]` syntax on an Seurat assay object:
+Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object:
 
 ```{r}
 #| message: true
@@ -260,9 +252,7 @@ assay <- GetAssay(sc, assay = "RNA.008um")
 assay[[]] %>% head(5)
 ```
 
-There is currently no gene metadata for this Seurat assay object. 
-
-If available, individual columns can be accessed using the `$` syntax on the Seurat assay object.
+In this example, no gene metadata is available for the assay. If available, you can access individual columns using the `$` syntax.
 
 ## Dimensionality reductions
 
@@ -343,6 +333,10 @@ DefaultAssay(sc) <- "RNA.008um"
 p1 | p2
 ```
 
+```{r}
+1 + 1
+knitr::knit_exit()
+```
 
 
 # Quality control
@@ -555,6 +549,9 @@ p
 ```
 
 
-## 
+# Other useful resources
+
+- [OSTA Visium HD Workflow](https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html)
+- [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
 
 
