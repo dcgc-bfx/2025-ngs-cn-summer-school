@@ -40,7 +40,4 @@ format:
     smaller: true
     auto-stretch: false
     df-print: "default"
-    knitr:
-      opts_chunk:
-        collapse: true
 
