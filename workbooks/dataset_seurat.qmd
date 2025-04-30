@@ -154,7 +154,7 @@ How many images are in the dataset?
 Why always two?
 :::
 
-## What is Stored in the Seurat Object?
+## What is stored in the Seurat Object?
 
 The Seurat object organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. The key components include:
 
@@ -224,7 +224,7 @@ We use the `GetAssayData` function to access the actual data:
 ```{r}
 #| message: true
 
-counts <- GetAssayData(sc, assay = "RNA.008um", layer = "counts")
+counts = GetAssayData(sc, assay="RNA.008um", layer="counts")
 counts[1:10, 1:10]
 ```
 
@@ -295,12 +295,7 @@ Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing 
 Reductions(sc)
 ```
 
-Currently, there are no reductions in the Seurat object. If they were present, you could access them using:
-
-```{r}
-# Reductions(sc, slot = "pca")
-# sc[["pca"]]
-```
+Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `GetReduction` function or the `[[]]` syntax.
 
 ## Neighbors and graphs
 
@@ -311,15 +306,7 @@ Neighbors(sc)
 Graphs(sc)
 ```
 
-Currently, there are no computed neighbors or graphs. If available, you could access them with:
-
-```{r}
-# Neighbors(sc, slot = "RNA.nn")
-# sc[["RNA.nn"]]
-
-# Graphs(sc, slot = "RNA_nn")
-# sc[["RNA_nn"]]
-```
+Currently, there are no computed neighbors or graphs. If available, you could access them with the `GetNeighbors` / `GetGraph` functions or the `[[]]` syntax.
 
 ## Images
 
@@ -418,6 +405,10 @@ If they form a distinct pattern, reconsider the threshold — you might be remov
 filtered_bins_counts = WhichCells(sc,  
                                   expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_counts) + NoLegend()
+```
+
+```{r}
+knitr::knit_exit()
 ```
 
 ## Number of Genes per Bin
@@ -663,7 +654,7 @@ Downstream analysis can be restricted to the top PCs. We need to decide how many
 Look for the "elbow" — a point where adding more PCs gives diminishing returns:
 
 ```{r}
-ElbowPlot(sc, ndims=50)
+ElbowPlot(sc, reduction="pca.sketch", ndims=50)
 ```
 
 You can also check which genes contribute most to each PC:
@@ -687,7 +678,7 @@ How many PCs would you choose for further analysis?
 
 For clustering, Seurat applies a graph-based approach. In short, Seurat first identifies for each bin its k nearest neighbors based on euclidean distance in PCA space. Using this neighborhood information, it then builds a nearest-neighbors graph (NN) and an improved version called shared nearest neighbor (SNN) graph.
 
-We construct these graphs with the `FindNeighbors` function. We use the first 20 PCs as input and set the number of neighbors to 20:
+We construct these graphs with the `FindNeighbors` function. We use the first 30 PCs as input and set the number of nearest neighbors to 20:
 
 ```{r}
 sc = FindNeighbors(sc, reduction="pca.sketch", dims=1:30, k.param=20)
@@ -702,10 +693,10 @@ We run the `FindClusters` function and use the Leiden algorithm instead of the d
 sc = FindClusters(sc, cluster.name="seurat_clusters.sketch", resolution=1, algorithm=4)
 ```
 
-The clusters are saved as column in the bin metadata. Let us summarise the clustering of the sketched dataset:
+The clusters are saved as bin metadata column. Let us summarise the clustering of the sketched dataset:
 
 ```{r}
-summary(sc$seurat_clusters.sketch)
+table(sc$seurat_clusters.sketch)
 ```
 
 We have clustered the sketched dataset into 21 clusters. Note that we can provide multiple resolution values to test different clustering resolutions.
@@ -714,7 +705,7 @@ We have clustered the sketched dataset into 21 clusters. Note that we can provid
 
 Additionally, we run a dimensionality reduction method called Uniform Manifold Approximation and Projection (UMAP). UMAP is a non-linear method that embeds high-dimensional data into 2D while trying to preserve the local structure of the data. It is often used for visualization. However it should be avoided to draw biological conclusions from the UMAP only without actual clustering.
 
-We run the `RunUMAP` function and use the first 20 PCs as input. This creates a new dimensionality reduction object called `umap.sketch`:
+We run the `RunUMAP` function and use the first 30 PCs as input. This creates a new dimensionality reduction object called `umap.sketch`:
 
 ```{r}
 sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch", dims=1:30, return.model=TRUE)
@@ -728,17 +719,19 @@ p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(
 p1 | p2
 ```
 
+Here we can nicely see that we only analysed a subsampled dataset.
+
 ## Analysing the full dataset
 
 We now use the `ProjectData`function to project the cluster labels, PCA and UMAP, that we learned from the 50,000 sketched cells, to the entire dataset:
 
 ```{r}
-sc = ProjectData(sc,
-                 sketched.assay="sketch", assay="RNA.008um", 
-                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
-                 umap.model="umap.sketch",
-                 refdata=list(seurat_clusters="sc$seurat_clusters.sketch"),
-                 dims=1:30)
+#sc = ProjectData(sc,
+#                 sketched.assay="sketch", assay="RNA.008um", 
+#                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
+#                 umap.model="umap.sketch",
+#                 refdata=list(seurat_clusters="sc$seurat_clusters.sketch"),
+#                 dims=1:30)
 ```
 
 
