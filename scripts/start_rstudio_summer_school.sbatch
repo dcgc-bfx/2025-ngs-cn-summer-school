@@ -86,10 +86,10 @@ cat <<END
 
 1. Create an SSH tunnel from your laptop to our cluster head node:
 
-- Linux/Mac, open a terminal (application) and type in:
+- In Linux/Mac, open a terminal. In Windows, open the "Windows PowerShell". Then type in:
    ssh -N -L ${PORT}:localhost:${PORT} ${USER}@biocluster4
 
-- Windows, use PuTTY or another ssh tool to connect
+- When asked about the "The authenticity of host ...", type "yes" to connect.
 
 2. Open your web browser (preferably Chrome or Firefox) and point it to: http://localhost:${PORT}
 
@@ -103,7 +103,7 @@ cat <<END
 #############################################
 
 1. You can disconnect from the RStudio Server by closing the ssh tool or shell. After that you can even close your laptop. 
-2. Your RStudio will continue running on our cluster until the job is terminated by a time limit.
+2. Your RStudio will continue running on our cluster until the job is terminated at the end of the workshop.
 3. To reconnect, follow the steps "How to connect to the RStudio Server" again.
 
 #######################################
