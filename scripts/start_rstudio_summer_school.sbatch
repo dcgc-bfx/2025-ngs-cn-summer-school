@@ -31,7 +31,7 @@ USER=$(whoami)
 PASSWORD=$(openssl rand -base64 8)
 
 # Set a port between 9000 and 9025
-PORT=9002
+PORT=9001
 
 # Set path/url to Singularity image
 SINGULARITY_IMAGE=oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:Unstable
@@ -54,7 +54,7 @@ function shutdown()
 	trap " " SIGUSR1 SIGTERM
 
 	# Terminate all child processes
-	kill -s SIGTERM 0
+	kill 0
 
 	# Wait until done
 	wait
@@ -80,18 +80,35 @@ COMPUTE_NODE=$(hostname | sed 's/.biocluster$//')
 
 # Print message with instructions
 cat <<END
-1. Create an SSH tunnel from your laptop to our biocluster4 head node
+########################################
+# How to connect to the RStudio Server #
+########################################
 
-   ssh  -o ServerAliveInterval=300 -N -L ${PORT}:localhost:${PORT} ${USER}@biocluster4
+1. Create an SSH tunnel from your laptop to our cluster head node:
 
-2. Open your web browser and point it to http://localhost:${PORT}
+- Linux/Mac, open a terminal (application) and type in:
+   ssh -N -L ${PORT}:localhost:${PORT} ${USER}@biocluster4
+
+- Windows, use PuTTY or another ssh tool to connect
+
+2. Open your web browser (preferably Chrome or Firefox) and point it to: http://localhost:${PORT}
 
 3. Log into RStudio Server using the following credentials:
 
    user: ${USER}
    password: ${PASSWORD}
 
-When done using RStudio Server, terminate the job by:
+#############################################
+# How to disconnect from the RStudio Server #
+#############################################
+
+1. You can disconnect from the RStudio Server by closing the ssh tool or shell. After that you can even close your laptop. 
+2. Your RStudio will continue running on our cluster until the job is terminated by a time limit.
+3. To reconnect, follow the steps "How to connect to the RStudio Server" again.
+
+#######################################
+# How to terminate the RStudio Server #
+#######################################
 
 1. Exit the RStudio Session ("power" button in the top right corner of the RStudio window)
 2. Issue the following command on the login node:
