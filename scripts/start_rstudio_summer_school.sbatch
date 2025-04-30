@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --signal=B:SIGUSR1@300
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=20
@@ -54,7 +54,7 @@ function shutdown()
 	trap " " SIGUSR1 SIGTERM
 
 	# Terminate all child processes
-	kill 0
+	kill -s SIGTERM 0
 
 	# Wait until done
 	wait
@@ -107,17 +107,17 @@ export SINGULARITYENV_RSTUDIO_PASSWORD=${PASSWORD}
 export SINGULARITYENV_RSTUDIO_PORT=${PORT}
 export SINGULARITYENV_RSTUDIO_SESSION_TIMEOUT=0
 
-# Tunnel back to biocluster4 with ssh (runs in background) and start R-Server (runs in foreground). 
 # Start R-Server
-ssh -o ServerAliveInterval=300 -N -R ${PORT}:localhost:${PORT} biocluster4 & \
 singularity exec \
   --cleanenv \
   --scratch /run,/var/lib/rstudio-server \
   --workdir ${workdir}/singularity \
   --bind ${workdir}/tmp \
-  --bind ${workdir}/tmp \
   --bind ${workdir}/rserver \
   ${SINGULARITY_IMAGE} \
-  micromamba run --name single-cell /usr/lib/rstudio-server/bin/rserver --server-user=${USER} --www-port=${PORT}
+  micromamba run --name single-cell /usr/lib/rstudio-server/bin/rserver --server-user=${USER} --www-port=${PORT} &
+
+#  Tunnel back to biocluster4 with ssh
+ssh -o ServerAliveInterval=300 -N -R ${PORT}:localhost:${PORT} biocluster4
 
 printf 'rserver exited'

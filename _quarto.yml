@@ -21,7 +21,6 @@ knitr:
     fig-height: 5
     dev:
     - "png"
-    - "cairo_pdf"
     dev.args:
       png:
         type: "cairo"
@@ -31,7 +30,9 @@ knitr:
 ##################
 format:
   html:
-    theme: "serif"
+    theme:
+    - "serif"
+    - "css/html.scss"
   revealjs:
     theme:
     - "serif"
