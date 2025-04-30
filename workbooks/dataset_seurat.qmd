@@ -22,18 +22,26 @@ Before diving into the data, we need to load a few important R packages. These l
 library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
 library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
-library(grid)
+library(grid)       # For other plots
+library(viridis)    # Our continuous colour palette
 
-# Colours (for perhaps in the future :P)
-our_colours = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", "#fedf25","#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", "#761445", "#d65b5a", 
+# Colours
+cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", "#fedf25", 
+"#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", "#761445", "#d65b5a", 
 "#94043a", "#e7a6cd", "#204519", "#87afd1", "#9b9a9d", "#f95b70", "#83c874", 
 "#808080", "#452b5b", "#ecb100", "#f46124", "#525252", "#4c84a3", "#00bfff", 
 "#01b4c6", "#174d79", "#a6a0f2", "#76facc", "#8491be", "#a32a2f", "#1c8859", 
 "#2cc012", "#35782b", "#9c6755", "#3b3960", "#eeb0a1", "#3e1e13", "#0064c3", 
 "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", "#000000", 
 "#a4527c", "#041859")   
-options(ggplot2.discrete.colour=our_colours)
-options(ggplot2.discrete.fill=our_colours)
+
+# ggplot2 defaults
+options(ggplot2.discrete.colour=cal_pal50)
+options(ggplot2.discrete.fill=cal_pal50)
+options(ggplot2.continuous.colour="viridis")
+options(ggplot2.continuous.fill="viridis")
+options(ggplot2.binned.colour="viridis")
+options(ggplot2.binned.fill="viridis")
 ```
 
 # Our dataset
@@ -174,6 +182,12 @@ Note that sometimes the term **bin** is also referred to as barcode, cell, nucle
 The term **gene** is also referred to as feature, protein, peak.   
 We will stick to bins and genes for this workshop. 
 :::
+
+Furthermore, bins have a default identity which is used for plotting. It can be accessed with the `Idents` function:
+
+```{r}
+Idents(sc) %>% head(5)
+```
 
 ## Assay data
 
@@ -352,6 +366,8 @@ We can also visualize gene expression in a spatial context using a **spatial fea
 SpatialFeaturePlot(sc, features = c("Nrgn", "Igf2", "Hap1"), slot = "counts")
 ```
 
+Note that `SpatialFeaturePlot` is for numeric values but there is also `SpatialDimPlot` which is for categorial values. 
+
 ### Comparison Between 8µm and 16µm Bins
 
 Finally, we can plot the gene expression in the **RNA.016um assays**. This allows us to visualize how the data changes when comparing different bin sizes.
@@ -411,7 +427,7 @@ If they form a distinct pattern, reconsider the threshold — you might be remov
 
 ```{r}
 filtered_bins_counts = WhichCells(sc, expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
-SpatialDimPlot(sc, cells.highlight=filtered_bins_counts) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_counts, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
 ::: {.callout-note}
@@ -432,10 +448,9 @@ summary(sc$nFeature_RNA.008um)
 ```
 
 ```{r}
-filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um > 2000)
-                                 #expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
+filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
 
-SpatialDimPlot(sc, cells.highlight=filtered_bins_genes) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
 ## Mitochondrial content
@@ -455,7 +470,7 @@ p1 | p2
 ```{r}
 filtered_bins_mito = WhichCells(sc,
                                   expression = pMito_RNA.008um > 30)
-SpatialDimPlot(sc, cells.highlight=filtered_bins_mito) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
 ## Filtering of bins
@@ -527,6 +542,10 @@ Why might mitochondrial content be misleading in some tissues (e.g., muscle or b
 What are the trade-offs of stricter vs. more lenient filtering?  
 :::
 
+```{r}
+knitr::knit_exit()
+```
+
 # Preprocessing
 
 After removing low-quality bins, we now prepare the dataset for downstream analysis. This **preprocessing pipeline** includes:
@@ -534,7 +553,7 @@ After removing low-quality bins, we now prepare the dataset for downstream analy
 1. Normalization of raw counts
 2. Identification of highly variable genes (HVGs)
 3. Centering and scaling of those HVGs
-4. Optional sketching of the dataset for speed
+4. Optional sketching of the dataset for speed (HVGs)
 5. Dimensionality reduction (PCA) based on the HGVs
 
 Each step ensures that only informative, reliable data is passed into clustering and annotation workflows.
@@ -695,19 +714,22 @@ Graphs(sc)
 
 Seurat then splits the SNN graph into well-connected communities. It does this by iteratively grouping neighboring bins together while trying to optimize the modularity. Modularity is is a measure for connectivity in graphs and a high value indicates that the bins within a community are more connected to each other than to bins outside of the community. The final communities are called clusters.
 
-We run the `FindClusters` function and use the Leiden algorithm instead of the default Louvain algorithm (`algorithm=4`). The resolution of the clustering can be controlled with the `resolution` parameter. Higher values lead to more clusters. We use `resolution=1` which is a good starting point:
+We run the `FindClusters` function and use the Leiden algorithm instead of the default Louvain algorithm (`algorithm=4`). The resolution of the clustering can be controlled with the `resolution` parameter. Higher values lead to more clusters. We use `resolution=2` as starting point:
 
 ```{r}
-sc = FindClusters(sc, cluster.name="seurat_clusters.sketch", resolution=1, algorithm=4)
+sc = FindClusters(sc, resolution=2, algorithm=4)
+
+# Save as extra metadata column
+sc$seurat_clusters.sketch = sc$seurat_clusters
 ```
 
-The clusters are saved as bin metadata column. Let us summarise the clustering of the sketched dataset:
+The clusters are saved as bin metadata column `seurat_clusters.sketch`. Let us summarise the clustering of the sketched dataset:
 
 ```{r}
 table(sc$seurat_clusters.sketch)
 ```
 
-We have clustered the sketched dataset into 21 clusters. Note that we can provide multiple resolution values to test different clustering resolutions.
+Note that we can provide multiple resolution values to test different clustering resolutions.
 
 ## UMAP of the sketched dataset
 
@@ -723,7 +745,7 @@ Note that `umap.sketch` is now the default dimensionality reduction. We can plot
 
 ```{r}
 p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
-p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=our_colours)
+p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=cal_pal50)
 p1 | p2
 ```
 
@@ -731,16 +753,100 @@ Here we can nicely see that we only analysed a subsampled dataset.
 
 ## Analysing the full dataset
 
-We now use the `ProjectData`function to project the cluster labels, PCA and UMAP, that we learned from the 50,000 sketched cells, to the entire dataset:
+We now use the `ProjectData`function to project the cluster labels, PCA and UMAP, that we learned from the sketch assay, to the entire dataset:
 
 ```{r}
-#sc = ProjectData(sc,
-#                 sketched.assay="sketch", assay="RNA.008um", 
-#                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
-#                 umap.model="umap.sketch",
-#                 refdata=list(seurat_clusters="sc$seurat_clusters.sketch"),
-#                 dims=1:30)
+sc = ProjectData(sc,
+                 sketched.assay="sketch", assay="RNA.008um", 
+                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
+                 umap.model="umap.sketch",
+                 refdata=list(seurat_clusters.008um="seurat_clusters.sketch"),
+                 dims=1:30)
+
+# Fix the category levels for bin metadata column seurat_clusters.008um and update the bin identities
+sc$seurat_clusters.008um = factor(sc$seurat_clusters.008um, levels=levels(sc$seurat_clusters.sketch))
+Idents(sc) = "seurat_clusters.008um"
+
+# Rename UMAP from full.umap.sketch to umap.008um
+umap = sc[["full.umap.sketch"]]
+Key(umap) = "umap.008"
+sc[["umap.008um"]] = umap
+sc[["full.umap.sketch"]] = NULL
+
+# Set default assay back to RNA.008um
+DefaultAssay(sc) = "RNA.008um"
 ```
+
+The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and the full clustering (`seurat_clusters.008um`). Now, we plot the clustering of the full dataset on the UMAP as well as in spatial context:
+
+```{r}
+p1 = DimPlot(sc, reduction="umap.008um", label=TRUE) + NoLegend()
+p2 = SpatialDimPlot(sc) + NoLegend() + scale_fill_manual(values=cal_pal50)
+p1 | p2
+```
+
+When we have so many different clusters (of which some are spatially restricted and others not), it can be challenging to interpret their spatial location. Here it helps to highlight individual clusters:
+
+```{r}
+cluster_bins = CellsByIdentities(sc, idents = c(16, 8))
+cluster_bins[["NA"]] = NULL
+
+SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+```
+
+## Marker genes
+
+Once we have clustered the data, we can identify marker genes for each cluster. Marker genes are genes that are differentially expressed in a specific cluster compared to all other clusters.
+
+## Plotting
+
+We can explore the results with different plotting functions. We can plot gene expression (or other numeric values) per cluster as violin plot to get an idea of their distribution:
+
+```{r}
+VlnPlot(sc, features=c("Acta2", "Apoe"), pt.size=0, ncol=1) + NoLegend()
+```
+
+We can also plot them on top of our UMAP visualization:
+
+```{r}
+FeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
+```
+
+And of course also in spatial context:
+
+```{r}
+SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
+```
+
+More comprehensive options are the dot plot and the heatmap. They allow us to visualize e.g. expression of multiple genes for multiple cluster in one plot. Here we plot the expression of three genes for clusters 1 to 10 as dot plot:
+
+```{r}
+DotPlot(sc, idents=1:10, 
+        features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"),
+        scale=TRUE) + 
+  scale_color_viridis() +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+We can also plot the same data as heatmap. However, we can do this only for a subset of cells:
+
+```{r}
+set.seed(1)
+cluster_bins = Cells(sc) %>% sample(10000)
+
+DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"), 
+          cells=cluster_bins,
+          group.colors=cal_pal50) + 
+  scale_fill_viridis() +
+  guides(colour="none")
+```
+
+## Marker genes
+
+## Subclustering
+
+# Spatial domains
+
 
 
 # Other useful resources
