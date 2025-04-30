@@ -11,7 +11,7 @@ In this practical session, we will explore how to analyze spatial transcriptomic
 
 Feel free to use your personal workbook to make notes, track your progress, and revisit it after this workshop.
 
-## 📦 Setting up your R environment 
+## Setting up your R environment 
 
 Before diving into the data, we need to load a few important R packages. These libraries will provide the tools we need for analysis and visualization.
 
@@ -22,6 +22,7 @@ Before diving into the data, we need to load a few important R packages. These l
 library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
 library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
+library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
 
 # Colours
@@ -34,41 +35,20 @@ cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
 "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", "#000000", 
 "#a4527c", "#041859")   
 
+# ggplot2 defaults
 options(ggplot2.discrete.colour=cal_pal50)
 options(ggplot2.discrete.fill=cal_pal50)
-
 options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
-
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
 ```
 
-::: {.callout-note}
-Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
-:::
-
-::: {.callout-tip}
-Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
-:::
-
-::: {.callout-caution}
-Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
-:::
-
-::: {.callout-warning}
-Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
-:::
-
-::: {.callout-important}
-Pink enough? (https://www.artcraftblend.com/blogs/colors/shades-of-pink)
-:::
-
-# Our Dataset
+# Our dataset
 
 In this section, we will introduce the dataset we are using for this training session.
 
-## 📊 Dataset Overview
+## Dataset overview
 
 We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com/):   
 
@@ -81,7 +61,7 @@ We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com
 
 The dataset is located in the `datasets/visiumhd_mouse_brain` directory within your project folder. If you need to download the dataset again, you can use the `datasets/download.R` script.
 
-## 📂 Dataset files
+## Dataset files
 
 The dataset includes several files and folders:
 
@@ -98,7 +78,7 @@ The dataset includes several files and folders:
 
 The folder `binned_outputs` is relevant for our analysis. Space Ranger defaults to grouping the data into square bins of 2 µm, 8 µm, and 16 µm, though these bin sizes can be modified in the Space Ranger settings.
 
-## 🔍 Focusing on `square_008um`
+## Focusing on `square_008um`
 
 Let us focus on the `square_008um/` folder, which contains the binned results at 8 µm resolution. This folder includes:
 
@@ -112,7 +92,7 @@ Let us focus on the `square_008um/` folder, which contains the binned results at
 
 The key files for our analysis are located in `filtered_feature_bc_matrix`. 
 
-## 📈 Counts data
+## Counts data
 
 Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which includes three important files:
 
@@ -140,13 +120,13 @@ This dataset has 19,059 genes, 98,917 bins and 68,259,814 counts.
 Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
 :::
 
-# The Seurat Object
+# The Seurat object
 
 The R package [Seurat](https://satijalab.org/seurat/) is a widely used tool for single-cell and spatial transcriptomics analysis. It allows researchers to work with complex biological data and perform tasks like dimensionality reduction, clustering, and visualization. 
 
 Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/) package in Python. 
 
-## Importing the Data into Seurat
+## Importing the data into Seurat
 
 The first step in analyzing your data is to import it into Seurat. Here, we load data for both 8µm and 16µm bins into a Seurat object: 
 
@@ -162,14 +142,14 @@ Now, let us take a look at the Seurat object to understand its structure:
 sc
 ```
 
-::: {.callout-tip}
+::: {.callout-note}
 ## Questions
 How many assays are in the dataset?  
 How many images are in the dataset?
 Why always two?
 :::
 
-## What is stored in the Seurat Object?
+## What is stored in the Seurat object?
 
 The Seurat object organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. The key components include:
 
@@ -181,7 +161,7 @@ The Seurat object organizes data into different components. These components fac
 - **Neighbors and graphs**: Information about the relatedness between bins
 - **Images**: Spatial coordinates and image data for visualizing the tissue
 
-## Bins and Genes
+## Bins and genes
 
 We can retrieve the total number of genes and bins stored in the Seurat object like this:
 
@@ -196,16 +176,18 @@ Cells(sc) %>% head(5)
 Features(sc) %>% head(5)
 ```
 
-Bins have a default identity which is used for plotting. It can be accessed with the `Idents` function:
+::: {.callout-tip}
+## Nomenclature
+Note that sometimes the term **bin** is also referred to as barcode, cell, nuclei.   
+The term **gene** is also referred to as feature, protein, peak.   
+We will stick to bins and genes for this workshop. 
+:::
+
+Furthermore, bins have a default identity which is used for plotting. It can be accessed with the `Idents` function:
 
 ```{r}
 Idents(sc) %>% head(5)
 ```
-
-::: {.callout-note}
-## Nomenclature
-Note that sometimes the term **bin** is referred to as barcode, cell, nuclei, and the term **gene** is referred to as feature, protein, peak. We will stick to bins and genes for this workshop. 
-:::
 
 ## Assay data
 
@@ -229,13 +211,14 @@ assay = GetAssay(sc, assay="RNA.008um")
 dim(assay)
 ```
 
-::: {.callout-tip}
+::: {.callout-note}
 ## Questions
 How many bins are in the assay?   
 How many genes are in the assay?
 :::
 
 The assay object stores data in different **layers**:  
+
 * `counts`: Raw counts for each gene in each bin  
 * `data`: Normalized counts for better comparability across bins  
 * `scale.data`: Scaled data for better comparability across genes  
@@ -249,7 +232,7 @@ counts = GetAssayData(sc, assay="RNA.008um", layer="counts")
 counts[1:10, 1:10]
 ```
 
-::: {.callout-tip}
+::: {.callout-note}
 ## Questions
 What do you find special about this matrix?
 :::
@@ -279,7 +262,7 @@ DefaultAssay(sc)
 Most Seurat functions will automatically use the default assay, but you can always specify a different assay with the `assay=` argument.
 :::
 
-## Bin Metadata
+## Bin metadata
 
 Bin metadata store additional information about each bin, such as the sample or condition. You can access this metadata using the `[[]]` syntax:
 
@@ -295,7 +278,7 @@ You can access individual metadata columns like this:
 sc$nCount_RNA.008um %>% head(3)
 ```
 
-## Gene Metadata
+## Gene metadata
 
 Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object:
 
@@ -343,6 +326,24 @@ Each assay and bin size should have a corresponding image. You can access a spec
 sc[["slice1.008um"]]
 ```
 
+When we say image, what we mean are the **coordinates of an image**. We can also visualize the underlying **raw image** like: 
+
+When we refer to the image in spatial transcriptomics, we usually mean the spatial coordinates associated with each bin. These coordinates tell us where each bin is located within the tissue section but not what the tissue looks like visually.
+
+However, Seurat also allows us to view the underlying histological image that was used to derive these spatial coordinates. This can help us visually inspect the tissue morphology in parallel with gene expression patterns.
+
+Here is how we can visualize the raw tissue image grid along with the spatial:
+H&E Staining
+dark = 
+
+
+```{r}
+#| fig-width: 5
+
+grid::grid.newpage()
+grid::grid.draw(GetImage(sc[["slice1.008um"]], method="grob"))
+```
+
 ## Plotting
 
 Now that we have the data in Seurat, we can start visualizing gene expression using plots.
@@ -379,11 +380,11 @@ DefaultAssay(sc) <- "RNA.008um"
 p1 | p2
 ```
 
-# Quality Control
+# Quality control
 
-## Why Quality Control?
+## Why quality control?
 
-In spatial transcriptomics (and any sequencing-based assay), not all bins (or cells) are equally informative. Quality Control (QC) is used to identify and remove low-quality bins from the dataset before further analysis. 
+In spatial transcriptomics (and any sequencing-based assay), not all bins are equally informative. Quality Control (QC) is used to identify and remove low-quality bins from the dataset before further analysis. 
 
 **Low-quality bins** might be the result of:  
 
@@ -395,7 +396,7 @@ In spatial transcriptomics (and any sequencing-based assay), not all bins (or ce
 **Why does this matter?**  
 Low-quality bins can distort the results. For instance, they might cluster separately and be falsely interpreted as novel biological states or cell types. Performing QC early helps ensure the reliability of downstream steps like normalization, clustering, and cell type annotation.
 
-## QC Metrics at a Glance
+## QC metrics at a glance
 
 We will use three common metrics to flag low-quality bins:
 
@@ -411,7 +412,7 @@ The total number of UMIs (counts) per bin gives a sense of overall transcript ab
 
 ```{r}
 p1 = VlnPlot(sc, features="nCount_RNA.008um", pt.size=0) + NoLegend()
-p2 = SpatialFeaturePlot(sc, features="nCount_RNA.008um") + NoLegend()
+p2 = SpatialFeaturePlot(sc, features="nCount_RNA.008um")
 p1 | p2
 
 summary(sc$nCount_RNA.008um)
@@ -425,10 +426,14 @@ If they form a distinct pattern, reconsider the threshold — you might be remov
 :::
 
 ```{r}
-filtered_bins_counts = WhichCells(sc,  
-                                  expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
+filtered_bins_counts = WhichCells(sc, expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_counts, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
+
+::: {.callout-note}
+## Find your optimal threshold
+Play around with the thresholds in R. Which threshold would you find best?
+:::
 
 ## Number of Genes per Bin
 
@@ -436,15 +441,14 @@ This tells us how many genes are detected per bin — essentially a measure of c
 
 ```{r}
 p1 <- VlnPlot(sc, features="nFeature_RNA.008um", pt.size=0) + NoLegend()
-p2 <- SpatialFeaturePlot(sc, features="nFeature_RNA.008um") + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features="nFeature_RNA.008um")
 p1 | p2
 
 summary(sc$nFeature_RNA.008um)
 ```
 
 ```{r}
-filtered_bins_genes = WhichCells(sc,
-                                 expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
+filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
 
 SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
@@ -520,8 +524,8 @@ sc[["RNA.008um"]] = subset(sc[["RNA.008um"]], features=names(genes_expressed))
 sc[["RNA.008um"]]
 ```
 
-## 💡 Best Practices
-
+::: {.callout-tip}
+## Best practices
 * Avoid "one-size-fits-all" thresholds; adjust based on sample type, bin size, and sequencing depth
 * Make sure to check the spatial distribution of filtered bins to avoid removing spatial patterns
 * At the beginning, run a full analysis (until clustering) without filtering 
@@ -529,10 +533,10 @@ sc[["RNA.008um"]]
   * Plot QC metrics per cluster and identify clusters without or with ambiguous cell type
   * Then adjust filtering criteria accordingly and repeat
 * Advanced: use tools that include neighboring bins (e.g [SpotSweeper](https://github.com/MicTott/SpotSweeper))
+:::
 
-::: {.callout-tip}
+::: {.callout-note}
 ## Questions  
-
 What might cause unusually high count bins?  
 Why might mitochondrial content be misleading in some tissues (e.g., muscle or brain)?  
 What are the trade-offs of stricter vs. more lenient filtering?  
@@ -620,7 +624,7 @@ scale_data = GetAssayData(sc, layer="scale.data")
 scale_data[1:5, 1:5]
 ```
 
-## Creating a Sketch Assay
+## Creating a sketch assay
 
 Large datasets can slow down clustering and UMAP. A sketch assay creates a reduced representation while preserving rare cell populations.
 
@@ -646,7 +650,7 @@ sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="sketch")
 ```
 
-::: {.callout-note}
+::: {.callout-tip}
 ## Tip
 Sketching is ideal for exploration on (very) large datasets. If your computing machine is super powerful or your dataset reasonably small, you might not need it. 
 :::
@@ -686,7 +690,7 @@ You can also check which genes contribute most to each PC:
 VizDimLoadings(sc, reduction="pca.sketch", dims=1:4, nfeatures=10, balanced=TRUE)
 ```
 
-::: {.callout-tip}
+::: {.callout-note}
 ## Question
 How many PCs would you choose for further analysis? 
 :::
