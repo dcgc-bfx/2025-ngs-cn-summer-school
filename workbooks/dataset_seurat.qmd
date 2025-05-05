@@ -119,6 +119,8 @@ Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which 
    * Only non-zero counts are stored.
 
 ```{r}
+#| label: dataset_1
+
 # barcodes.tsv.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
            header = FALSE, nrows = 5)
@@ -133,7 +135,7 @@ read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_f
 ```
 
 ::: {.callout-tip}
-## Example
+### Example
 This dataset has 19,059 genes, 98,917 bins and 68,259,814 counts.  
 Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
 :::
@@ -149,6 +151,8 @@ Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/
 The first step in analyzing your data is to import it into Seurat. Here, we load data for both 8µm and 16µm bins into a Seurat object: 
 
 ```{r}
+#| label: dataset_2
+
 sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size=c(8, 16), assay="RNA")
 sc$orig.ident = "brain"
 Idents(sc) = "brain"
@@ -157,11 +161,13 @@ Idents(sc) = "brain"
 Now, let us take a look at the Seurat object to understand its structure:
 
 ```{r}
+#| label: dataset_3
+
 sc
 ```
 
 ::: {.callout-note}
-## Questions
+### Questions
 How many assays are in the dataset?  
 How many images are in the dataset?
 Why always two?
@@ -184,18 +190,22 @@ The Seurat object organizes data into different components. These components fac
 We can retrieve the total number of genes and bins stored in the Seurat object like this:
 
 ```{r}
+#| label: dataset_4
+
 dim(sc)
 ```
 
 We can also list the bins and genes contained in the Seurat object:
 
 ```{r}
+#| label: dataset_5
+
 Cells(sc) %>% head(5)
 Features(sc) %>% head(5)
 ```
 
 ::: {.callout-tip}
-## Nomenclature
+### Nomenclature
 Note that sometimes the term **bin** is also referred to as barcode, cell, nuclei.   
 The term **gene** is also referred to as feature, protein, peak.   
 We will stick to bins and genes for this workshop. 
@@ -204,6 +214,8 @@ We will stick to bins and genes for this workshop.
 Furthermore, bins have a default identity which is used for plotting. It can be accessed with the `Idents` function:
 
 ```{r}
+#| label: dataset_6
+
 Idents(sc) %>% head(5)
 ```
 
@@ -212,12 +224,16 @@ Idents(sc) %>% head(5)
 Assays store the actual data, for example gene expression counts. We can list the available assays in the Seurat object:
 
 ```{r}
+#| label: dataset_6
+
 Assays(sc)
 ```
 
 To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
 
 ```{r}
+#| label: dataset_7
+
 GetAssay(sc, assay="RNA.008um")
 sc[["RNA.008um"]]
 ```
@@ -225,12 +241,14 @@ sc[["RNA.008um"]]
 We can also check the number of genes and bins in a specific assay like this:
 
 ```{r}
+#| label: dataset_8
+
 assay = GetAssay(sc, assay="RNA.008um")
 dim(assay)
 ```
 
 ::: {.callout-note}
-## Questions
+### Questions
 How many bins are in the assay?   
 How many genes are in the assay?
 :::
@@ -244,6 +262,7 @@ The assay object stores data in different **layers**:
 We use the `GetAssayData` function to access the actual data:  
 
 ```{r}
+#| label: dataset_9
 #| message: true
 
 counts = GetAssayData(sc, assay="RNA.008um", layer="counts")
@@ -251,19 +270,23 @@ counts[1:10, 1:10]
 ```
 
 ::: {.callout-note}
-## Questions
+### Questions
 What do you find special about this matrix?
 :::
 
 The Seurat object has a default/active assay that is used for most functions. To check the active assay, we can use:
 
 ```{r}
+#| label: dataset_10
+
 DefaultAssay(sc)
 ```
 
 To change the active assay to another one, for example `"RNA.016um"`, use:
 
 ```{r}
+#| label: dataset_11
+
 DefaultAssay(sc) = "RNA.016um"
 DefaultAssay(sc)
 ```
@@ -271,12 +294,14 @@ DefaultAssay(sc)
 For this workshop, we will focus on the assay `"RNA.008um"` for our analysis:
 
 ```{r}
+#| label: dataset_12
+
 DefaultAssay(sc) = "RNA.008um"
 DefaultAssay(sc)
 ```
 
 ::: {.callout-tip}
-## Default assay
+### Default assay
 Most Seurat functions will automatically use the default assay, but you can always specify a different assay with the `assay=` argument.
 :::
 
@@ -285,6 +310,8 @@ Most Seurat functions will automatically use the default assay, but you can alwa
 Bin metadata store additional information about each bin, such as the sample or condition. You can access this metadata using the `[[]]` syntax:
 
 ```{r}
+#| label: dataset_13
+
 sc[[]] %>% head(5)
 ```
 
@@ -293,6 +320,8 @@ For example, the `orig.ident` column stores the original identity of the bin, an
 You can access individual metadata columns like this:
 
 ```{r}
+#| label: dataset_14
+
 sc$nCount_RNA.008um %>% head(3)
 ```
 
@@ -301,6 +330,7 @@ sc$nCount_RNA.008um %>% head(3)
 Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object:
 
 ```{r}
+#| label: dataset_15
 #| message: true
 
 assay <- GetAssay(sc, assay = "RNA.008um")
@@ -314,6 +344,8 @@ In this example, no gene metadata is available for the assay. If available, you 
 Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing high-dimensional data in a lower-dimensional space. You can list available reductions with the `Reductions` function:
 
 ```{r}
+#| label: dataset_16
+
 Reductions(sc)
 ```
 
@@ -324,6 +356,8 @@ Currently, there are no reductions in the Seurat object. If they were present, y
 To identify how the bins are related (e.g., for clustering), Seurat computes neighbors and graphs. You can list available neighbors and graphs using:
 
 ```{r}
+#| label: dataset_17
+
 Neighbors(sc)
 Graphs(sc)
 ```
@@ -335,12 +369,16 @@ Currently, there are no computed neighbors or graphs. If available, you could ac
 For spatial data, images are stored in the Seurat object to visualize tissue sections and spatial coordinates. To list available images, use:
 
 ```{r}
+#| label: dataset_18
+
 Images(sc)
 ```
 
 Each assay and bin size should have a corresponding image. You can access a specific image using the `[[]]` syntax:
 
 ```{r}
+#| label: dataset_19
+
 sc[["slice1.008um"]]
 ```
 
@@ -353,6 +391,7 @@ In this example, **Hematoxylin and eosin (H&E) staining** was used. H&E staining
 Here is how we can visualize the raw tissue image grid along with the spatial:
 
 ```{r}
+#| label: dataset_20
 #| out-width: 5in
 #| out-height: 5in
 
@@ -368,6 +407,8 @@ Now that we have the data in Seurat, we can start visualizing gene expression us
 We can create a **violin plot** to show the expression of specific genes (e.g., "Nrgn", "Igf2", "Hap1") in the RNA.008um assay:
 
 ```{r}
+#| label: dataset_21
+
 VlnPlot(sc, features = c("Nrgn", "Igf2", "Hap1"), layer="counts", pt.size = 0) + NoLegend()
 ```
 
@@ -378,12 +419,13 @@ Since the counts are raw and not normalized, interpreting them directly can be c
 We can also visualize gene expression in a spatial context using a **spatial feature plot**:
 
 ```{r}
-#| dpi: 400
+#| label: dataset_22
 
 SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
 ```
 
 ::: {.callout-tip}
+### Plot size and resolution matter
 You may observe visual artefacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
 :::
 
@@ -392,6 +434,8 @@ You may observe visual artefacts in the image. This can occur when the image is 
 Finally, we can plot the gene expression in the **RNA.016um assays**. This allows us to visualize how the data changes when comparing different bin sizes.
 
 ```{r}
+#| label: dataset_23
+
 DefaultAssay(sc) <- "RNA.016um"
 p1 <- VlnPlot(sc, features = c("Nrgn"), layer="counts", pt.size = 0) + NoLegend()
 p2 <- SpatialFeaturePlot(sc, features = c("Nrgn"), slot = "counts")
@@ -430,6 +474,8 @@ These metrics will be assessed both statistically and spatially to get an idea o
 The total number of UMIs (counts) per bin gives a sense of overall transcript abundance.
 
 ```{r}
+#| label: qc_1
+
 p1 = VlnPlot(sc, features="nCount_RNA.008um", pt.size=0) + NoLegend()
 p2 = SpatialFeaturePlot(sc, features="nCount_RNA.008um")
 p1 | p2
@@ -440,17 +486,19 @@ summary(sc$nCount_RNA.008um)
 Look for bins with very few or very many counts. Bins with <30 counts or >2000 counts are suspicious and flagged for removal. 
 
 ::: {.callout-tip}
-## Bins flagged here should appear randomly across the tissue
+### Bins flagged here should appear randomly across the tissue #####
 If they form a distinct pattern, reconsider the threshold — you might be removing biologically relevant data.
 :::
 
 ```{r}
+#| label: qc_2
+
 filtered_bins_counts = WhichCells(sc, expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_counts, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
 ::: {.callout-note}
-## Find your optimal threshold
+### Find your optimal threshold
 Play around with the thresholds in R. Which threshold would you find best?
 :::
 
@@ -459,6 +507,8 @@ Play around with the thresholds in R. Which threshold would you find best?
 This tells us how many genes are detected per bin — essentially a measure of complexity.
 
 ```{r}
+#| label: qc_3
+
 p1 <- VlnPlot(sc, features="nFeature_RNA.008um", pt.size=0) + NoLegend()
 p2 <- SpatialFeaturePlot(sc, features="nFeature_RNA.008um")
 p1 | p2
@@ -467,8 +517,9 @@ summary(sc$nFeature_RNA.008um)
 ```
 
 ```{r}
-filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
+#| label: qc_4
 
+filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
@@ -479,6 +530,8 @@ Mitochondrial RNA (mtRNA) often increases when cells are stressed or dying. A hi
 We identify mitochondrial genes using a prefix (^mt-) and calculate their percentage per bin:
 
 ```{r}
+#| label: qc_5
+
 sc = PercentageFeatureSet(sc, pattern="^mt-", col.name="pMito_RNA.008um") 
 
 p1 = VlnPlot(sc, features="pMito_RNA.008um", pt.size=0) + NoLegend()
@@ -487,8 +540,9 @@ p1 | p2
 ```
 
 ```{r}
-filtered_bins_mito = WhichCells(sc,
-                                  expression = pMito_RNA.008um > 30)
+#| label: qc_6
+
+filtered_bins_mito = WhichCells(sc, expression = pMito_RNA.008um > 30)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
@@ -499,12 +553,16 @@ Once you have reviewed the metrics and decided on thresholds, remove poor-qualit
 Before filtering:
 
 ```{r}
+#| label: qc_7
+
 dim(sc[["RNA.008um"]])
 ```
 
 Apply the filters:
 
 ```{r}
+#| label: qc_8
+
 sc = subset(sc, nCount_RNA.008um < 30 | nCount_RNA.008um > 2000, invert=TRUE)
 sc = subset(sc, nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000, invert=TRUE)
 sc = subset(sc, pMito_RNA.008um > 30, invert=TRUE)
@@ -516,6 +574,8 @@ sc[["RNA.008um"]]
 Genes expressed in only a few bins can add noise. First, we count how many bins each gene is detected in:
 
 ```{r}
+#| label: qc_9
+
 counts = GetAssayData(sc, layer="counts")
 genes_expressed = rowSums(counts > 0)
 head(genes_expressed, 5)
@@ -525,12 +585,16 @@ summary(genes_expressed)
 Let us quickly summarize these numbers. Most of the genes are expressed in at least 30 bins, on average in 4063 bins and maximum in 283994 bins.
 
 ```{r}
+#| label: qc_10
+
 summary(genes_expressed)
 ```
 
 Filter out genes expressed in ≤10 bins:
 
 ```{r}
+#| label: qc_11
+
 genes_expressed = genes_expressed[genes_expressed > 10]
 length(genes_expressed)
 ```
@@ -538,13 +602,15 @@ length(genes_expressed)
 Then subset the Seurat object:
 
 ```{r}
+#| label: qc_12
+
 sc[["RNA.008um"]]
 sc[["RNA.008um"]] = subset(sc[["RNA.008um"]], features=names(genes_expressed))
 sc[["RNA.008um"]]
 ```
 
 ::: {.callout-tip}
-## Best practices
+### Best practices
 * Avoid "one-size-fits-all" thresholds; adjust based on sample type, bin size, and sequencing depth
 * Make sure to check the spatial distribution of filtered bins to avoid removing spatial patterns
 * At the beginning, run a full analysis (until clustering) without filtering 
@@ -555,7 +621,7 @@ sc[["RNA.008um"]]
 :::
 
 ::: {.callout-note}
-## Questions  
+### Questions  
 What might cause unusually high count bins?  
 Why might mitochondrial content be misleading in some tissues (e.g., muscle or brain)?  
 What are the trade-offs of stricter vs. more lenient filtering?  
@@ -568,8 +634,8 @@ After removing low-quality bins, we now prepare the dataset for downstream analy
 1. Normalization of raw counts
 2. Identification of highly variable genes (HVGs)
 3. Centering and scaling of those HVGs
-4. Optional sketching of the dataset for speed
-5. Dimensionality reduction (PCA) based on the HGVs
+4. Optional sketching of the dataset for speed (HVGs)
+5. Dimensionality reduction (PCA) based on the HVGs
 
 Each step ensures that only informative, reliable data is passed into clustering and annotation workflows.
 
@@ -587,6 +653,8 @@ Note that normalization methods for spatial data are still being developed and e
 This is implemented in Seurat with `NormalizeData()`:
 
 ```{r}
+#| label: preprocessing_1
+
 sc = NormalizeData(sc, normalization.method="LogNormalize", scale.factor=10000)
 sc[["RNA.008um"]]
 ```
@@ -594,6 +662,8 @@ sc[["RNA.008um"]]
 This creates a new layer in the assay object called `data` that contains the normalized counts. You can inspect the normalized values like so:
 
 ```{r}
+#| label: preprocessing_2
+
 data = GetAssayData(sc, layer="data")
 data[1:10, 1:10]
 ```
@@ -604,9 +674,11 @@ Not all genes are equally informative. Experience shows that 1,000-3,000 genes w
 
 Highly variable genes are typically the genes that show strong variation across bins and are more likely to distinguish biological states. Housekeeping genes with similar expression profiles across all bins, or genes with minor expression differences, might add random noise and mask relevant changes during downstream analysis. 
 
-Here, we determine the top 1000 HGVs: 
+Here, we determine the top 1000 HVGs: 
 
 ```{r}
+#| label: preprocessing_3
+
 sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
 ```
 
@@ -615,6 +687,8 @@ Note that 1,000 HGVs represents the lower end of the possible range. However, fo
 Get the top 10 HVGs and plot them:
 
 ```{r}
+#| label: preprocessing_4
+
 top10 = VariableFeatures(sc) %>% head(10)
 top10
 
@@ -630,6 +704,8 @@ Gene expression ranges vary; some genes have inherently higher values. Centering
 We use the `ScaleData` function to center and scale the HVGs:
 
 ```{r}
+#| label: preprocessing_5
+
 sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="RNA.008um")
 ```
@@ -637,6 +713,8 @@ GetAssay(sc, assay="RNA.008um")
 This creates a new layer in the assay object called `scale.data` that contains the scaled counts:
 
 ```{r}
+#| label: preprocessing_6
+
 scale_data = GetAssayData(sc, layer="scale.data")
 scale_data[1:5, 1:5]
 ```
@@ -648,7 +726,8 @@ Large datasets can slow down clustering and UMAP. A sketch assay creates a reduc
 Instead of random sampling, Seurat uses a leverage score to keep influential or rare bins. We sketch 50,000 bins:
 
 ```{r}
-# we select 50,0000 cells and create a new 'sketch' assay
+#| label: preprocessing_7
+
 sc = SketchData(sc, ncells=50000, method="LeverageScore", sketched.assay="sketch", features=VariableFeatures(sc))
 sc
 ```
@@ -656,38 +735,46 @@ sc
 When we print the Seurat object, we see that the default is now the sketch assay. We can also check that it is indeed smaller:
 
 ```{r}
+#| label: preprocessing_8
+
 GetAssay(sc, assay="sketch")
 ```
 
 Repeat HVG selection and scaling for the sketch:
 
 ```{r}
+#| label: preprocessing_9
+
 sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
 sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="sketch")
 ```
 
 ::: {.callout-tip}
-## Tip
+### Tip
 Sketching is ideal for exploration on (very) large datasets. If your computing machine is super powerful or your dataset reasonably small, you might not need it. 
 :::
 
 ## Dimensionality reduction
 
-With ~20,000 genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to 1,000 HGVs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
+With ~20,000 genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to 1,000 HVGs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
 
 We use Principal Component Analysis (PCA) to reduce the dimensionality. PCA finds new axes (PCs) that capture the most variance in the dataset, and projects the data onto these axes. The resulting meta-variables are called principal components (PCs).
 
 We use the `RunPCA` function to calculate the top 50 principle components (PCs) for the data. This creates a new dimensionality reduction object called `pca.sketch`:
 
 ```{r}
-sc = RunPCA(sc, reduction.name="pca.sketch", features=VariableFeatures(sc), npcs=50)
+#| label: preprocessing_10
+
+sc = RunPCA(sc, reduction.name="pca.sketch", features=VariableFeatures(sc), npcs=50, nfeatures.print=5)
 Reductions(sc, slot="pca.sketch")
 ```
 
 Visualize first two PCs:
 
 ```{r}
+#| label: preprocessing_11
+
 DimPlot(sc, reduction="pca.sketch", dims=c(1, 2))
 ```
 
@@ -698,12 +785,16 @@ Downstream analysis can be restricted to the top PCs. We need to decide how many
 Look for the "elbow" — a point where adding more PCs gives diminishing returns:
 
 ```{r}
+#| label: preprocessing_12
+
 ElbowPlot(sc, reduction="pca.sketch", ndims=50)
 ```
 
 You can also check which genes contribute most to each PC:
 
 ```{r}
+#| label: preprocessing_13
+
 VizDimLoadings(sc, reduction="pca.sketch", dims=1:4, nfeatures=10, balanced=TRUE)
 ```
 
@@ -713,7 +804,7 @@ Helpful YouTube video on PCA in the context of gene expression analysis is (here
 :::
 
 ::: {.callout-note}
-## Question
+### Question
 How many PCs would you choose for further analysis? 
 :::
 
@@ -734,6 +825,8 @@ Seurat uses a graph-based approach for clustering. In short, Seurat first constr
 We begin by creating a nearest-neighbor graph using the `FindNeighbors` function in Seurat. We use the first 30 PCs as input and set the number of nearest neighbors to 20:
 
 ```{r}
+#| label: clustering_1
+
 sc = FindNeighbors(sc, reduction="pca.sketch", dims=1:30, k.param=20)
 Graphs(sc)
 ```
@@ -748,7 +841,9 @@ We call the `FindClusters` function with `algorithm=4`, which tells Seurat to us
 We will start with a resolution of 2, but this can be adjusted later depending on the number of clusters you wish to identify:
 
 ```{r}
-sc = FindClusters(sc, resolution=2, algorithm=4)
+#| label: clustering_2
+
+sc = FindClusters(sc, resolution=2, algorithm="leiden")
 
 # Save as extra metadata column
 sc$seurat_clusters.sketch = sc$seurat_clusters
@@ -757,6 +852,8 @@ sc$seurat_clusters.sketch = sc$seurat_clusters
 The clusters are saved as bin metadata column `seurat_clusters.sketch`. Let us summarise the clustering of the sketched dataset:
 
 ```{r}
+#| label: clustering_3
+
 table(sc$seurat_clusters.sketch)
 ```
 
@@ -774,12 +871,16 @@ Now, we move on to generating a UMAP plot, which provides a visual representatio
 We run the `RunUMAP` function and use the first 30 PCs as input. This creates a new dimensionality reduction object called `umap.sketch`:
 
 ```{r}
+#| label: clustering_4
+
 sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch", dims=1:30, return.model=TRUE)
 ```
 
 Note that `umap.sketch` is now the default dimensionality reduction. We can color the clustering on the UMAP as well as in spatial context:
 
 ```{r}
+#| label: clustering_5
+
 p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
 p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=cal_pal50)
 p1 | p2
@@ -794,6 +895,8 @@ Once we have finished analyzing the sketched dataset, we can project the learned
 We use the `ProjectData` function to carry out this projection. Here’s the code to project the data from the sketch assay to the full dataset:
 
 ```{r}
+#| label: clustering_6
+
 sc = ProjectData(sc,
                  sketched.assay="sketch", assay="RNA.008um", 
                  sketched.reduction="pca.sketch", full.reduction="pca.008um", 
@@ -819,6 +922,8 @@ gc()
 The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and a full clustering (`seurat_clusters.008um`). We color the clusters of the full dataset on the UMAP as well as in spatial context:
 
 ```{r}
+#| label: clustering_7
+
 p1 = DimPlot(sc, reduction="umap.008um", label=TRUE) + NoLegend()
 p2 = SpatialDimPlot(sc) + NoLegend() + scale_fill_manual(values=cal_pal50)
 p1 | p2
@@ -829,6 +934,8 @@ When dealing with many clusters, some of which may be spatially restricted while
 We can highlight specific clusters by using the `CellsByIdentities` function to select bins belonging to particular clusters. Here, we highlight clusters 16 and 8:
 
 ```{r}
+#| label: clustering_8
+
 cluster_bins = CellsByIdentities(sc, idents = c(16, 8))
 cluster_bins[["NA"]] = NULL
 
@@ -875,24 +982,32 @@ To explore the results and visualize gene expression across different clusters, 
 A **violin plot** allows us to visualize the distribution of gene expression across clusters. For example, we can plot the expression of genes Acta2 and Apoe:
 
 ```{r}
+#| label: clustering_9
+
 VlnPlot(sc, features=c("Acta2", "Apoe"), pt.size=0, ncol=1) + NoLegend()
 ```
 
 We can also visualize the gene expression directly on top of the **UMAP plot**. This will show the expression of genes such as Acta2 and Apoe across all cells in the low-dimensional UMAP space:
 
 ```{r}
+#| label: clustering_10
+
 FeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
 ```
 
 Since we are working with spatial data, you can visualize gene expression in the **spatial context**, showing where the genes are expressed on the tissue section:
 
 ```{r}
+#| label: clustering_11
+
 SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
 ```
 
 A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. Here's an example where we plot the expression of 10 genes across clusters 1 to 10:
 
 ```{r}
+#| label: clustering_12
+
 DotPlot(sc, idents=1:10, 
         features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"),
         scale=TRUE) + 
@@ -903,6 +1018,8 @@ DotPlot(sc, idents=1:10,
 For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of cells. This allows for a more focused analysis of gene expression patterns across specific clusters.
 
 ```{r}
+#| label: clustering_13
+
 set.seed(1)
 cluster_bins = Cells(sc) %>% sample(10000)
 
@@ -919,8 +1036,7 @@ rm(counts, data, scale_data, assay, umap)
 
 # R will automatically clear the memory of freed objects whenever it needs more space.
 # But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
-gc(verbose=FALSE)
-knitr::knit_exit()
+gc()
 ```
 
 ::: {.callout-note}
@@ -955,30 +1071,35 @@ BANKSY can be used to as alternative to our default clustering strategy from bef
 Note that this step can take a while and is very memory-intensive. 
 
 ```{r}
+#| label: spatial_1
+
 sc = RunBanksy(sc,
                assay="RNA.008um", assay_name="BANKSY.008um",
                features="variable",
                lambda=0.2, k_geom=15,
                verbose=TRUE)
-gc(verbose=FALSE)
-
-# Store the BANKSY layer data more compressed
-data = as(GetAssayData(sc[["BANKSY.008um"]], layer="data"), "dgCMatrix")
-sc[["BANKSY.008um"]] = SetAssayData(sc[["BANKSY.008um"]], layer="data", new.data=data)
-rm(data)
-gc(verbose=FALSE)
 
 # Set it as default
 DefaultAssay(sc) = "BANKSY.008um"
+
+gc()
+```
+
+Now we have created a new assay `BANKSY.008um` that contains the BANKSY results. It is also now the default assay. Important: Do not scale this assay as it will overwrite the BANKSY results.
+
+```{r}
+sc
 ```
 
 We then use this assay to do PCA dimensionality reduction followed by clustering and UMAP. We will use the first 20 PCs and set the clustering resolution to 0.5. However this is just a starting point and you should try different values to find the best clustering for your data:
 
 ```{r}
-sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15)
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15, nfeatures.print=5)
 sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
-sc = FindClusters(sc, cluster.name="banksy_clusters.008um", resolution=0.5, algorithm=4)
+sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
 sc = RunUMAP(sc, reduction="banksy_pca.008um", reduction.name="banksy_umap.008um", dims=1:15, return.model=TRUE)
+
+sc$banksy_clusters.008um = sc$seurat_clusters
 DefaultAssay(sc) = "RNA.008um"
 ```
 
@@ -990,47 +1111,45 @@ p2 = DimPlot(sc, reduction="banksy_umap.008um", label=TRUE, group.by="banksy_clu
 p1 | p2
 ```
 
-The same comparison as spatial plot:
+The same comparison as spatial plots:
 
 ```{r}
-p1 = SpatialDimPlot(sc, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat clustering")
-p2 = SpatialDimPlot(sc, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY clustering")
+p1 = SpatialDimPlot(sc, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat") + scale_fill_manual(values=cal_pal50)
+p2 = SpatialDimPlot(sc, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY") + scale_fill_manual(values=cal_pal50)
 p1 | p2
 ```
 
-To decide which is one is more
+Note that the BANKSY analysis might not automatically be the better one. You should check the results and determine which analysis make biologically more sense.
 
 ## Find spatial domains with BANKSY
 
-We set `lambda` to 0.8 and the number of neighbors (`k_geom`) to 50. Note that we fist delete the BANKSY assay from before. This is not strictly necessary but it will save us some memory.
+By tuning the `lambda` parameter, we can also focus on larger structures, i.e., spatial domains. With bigger `lambda` values and more neighbors, it will include more bins into the analysis. We set `lambda` to 0.8 and the number of neighbors (`k_geom`) to 50. 
+Note that we fist delete the BANKSY assay from the previous analysis. This is not strictly necessary but it will save us some memory.
 
 ```{r}
-sc[["BANKSY.008um"]] = NULL
-gc(verbose=FALSE)
-
+DefaultAssay(sc) = "BANKSY.008um"
 sc = RunBanksy(sc,
                assay="RNA.008um", assay_name="BANKSY.008um",
                features="variable",
                lambda=0.8, k_geom=50,
                verbose=TRUE)
-# 50 0.8
-gc(verbose=FALSE)
-
-# Store the BANKSY layer data more compressed
-data = as(GetAssayData(sc[["BANKSY.008um"]], layer="data"), "dgCMatrix")
-sc[["BANKSY.008um"]] = SetAssayData(sc[["BANKSY.008um"]], layer="data", new.data=data)
-rm(data)
-gc(verbose=FALSE)
 
 # Set it as default
 DefaultAssay(sc) = "BANKSY.008um"
+
+gc()
 ```
 
-Now we have created a new assay `BANKSY.008um` that contains the BANKSY results. It is also now the default assay. Important: Do not scale this assay as it will overwrite the BANKSY results.
+As before, we run PCA, clustering and UMAP with 15 PCs and a clustering resolution of 0.5. Tune these parameters for your data:
 
 ```{r}
-sc
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15, nfeatures.print=5)
+sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
+sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
+sc$banksy_domains.008um = sc$seurat_clusters
 ```
+
+Comparison here - why similar? Motivate to try diffewrent values
 
 
 # Other useful resources
