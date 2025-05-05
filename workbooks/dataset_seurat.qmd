@@ -20,6 +20,7 @@ Before diving into the data, we need to load a few important R packages. These l
 #| message: false
 
 library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
+library(SeuratWrappers) # Add-ons for Seurat
 library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 library(grid)       # For other plots
@@ -42,6 +43,18 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
+
+# Parallelisation seems to be slower - remove?
+#plan("multisession", workers = 4)
+#options(future.globals.maxSize=+Inf)
+plan("sequential")
+
+# Latest (May2025) Seurat and SeuratObject seem to have a number of bugs. Downgrade for now here but also in the image?
+#library(devtools)
+#install_version("Seurat", version = "5.2.1")
+#install_version("SeuratObject", version = "5.0.2")
+
+#options(Seurat.memsafe=TRUE)
 ```
 
 # Our dataset
@@ -340,8 +353,8 @@ dark =
 ```{r}
 #| fig-width: 5
 
-grid::grid.newpage()
-grid::grid.draw(GetImage(sc[["slice1.008um"]], method="grob"))
+#grid.newpage()
+grid.draw(GetImage(sc[["slice1.008um"]], method="grob"))
 ```
 
 ## Plotting
@@ -363,10 +376,15 @@ Since the counts are raw and not normalized, interpreting them directly can be c
 We can also visualize gene expression in a spatial context using a **spatial feature plot**:
 
 ```{r}
-SpatialFeaturePlot(sc, features = c("Nrgn", "Igf2", "Hap1"), slot = "counts")
+#| dpi: 400
+
+SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
 ```
 
-Note that `SpatialFeaturePlot` is for numeric values but there is also `SpatialDimPlot` which is for categorial values. 
+TODODODODODODO
+::: {.callout-tip}
+You might see strange artefacts in the image. This can happen if you plot the image using relatively low resolution (150dpi) and then open it on a high-resolution display. In this case, you need to increase the resolution using the quarto option `dpi`. Alternatively decrease the figure size.
+:::
 
 ### Comparison Between 8µm and 16µm Bins
 
@@ -589,10 +607,11 @@ Not all genes are equally informative. Experience shows that 1,000-3,000 genes w
 
 Highly variable genes are typically the genes that show strong variation across bins and are more likely to distinguish biological states. Housekeeping genes with similar expression profiles across all bins, or genes with minor expression differences, might add random noise and mask relevant changes during downstream analysis. 
 
-Here, we determine the top 2000 HGVs: 
+Here, we determine the top 1000 HGVs: 
 
 ```{r}
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000)
+sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
+#FOR NOW we take 1000 for memory issues
 ```
 
 Get the top 10 HVGs and plot them:
@@ -610,7 +629,7 @@ p
 
 Gene expression ranges vary; some genes have inherently higher values. Centering and scaling ensures each gene contributes equally during the analysis. By centering (mean expression of 0) and scaling (standard deviation of 1), all genes will be on the same scale which makes them comparable. 
 
-We use the `ScaleData` function to center and scale HGVs:
+We use the `ScaleData` function to center and scale the HVGs:
 
 ```{r}
 sc = ScaleData(sc, features=VariableFeatures(sc))
@@ -645,7 +664,7 @@ GetAssay(sc, assay="sketch")
 Repeat HVG selection and scaling for the sketch:
 
 ```{r}
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=2000)
+sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
 sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="sketch")
 ```
@@ -775,9 +794,10 @@ sc[["full.umap.sketch"]] = NULL
 
 # Set default assay back to RNA.008um
 DefaultAssay(sc) = "RNA.008um"
+gc()
 ```
 
-The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and the full clustering (`seurat_clusters.008um`). Now, we plot the clustering of the full dataset on the UMAP as well as in spatial context:
+The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and a full clustering (`seurat_clusters.008um`). We plot the clustering of the full dataset on the UMAP as well as in spatial context:
 
 ```{r}
 p1 = DimPlot(sc, reduction="umap.008um", label=TRUE) + NoLegend()
@@ -843,10 +863,124 @@ DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", 
 
 ## Marker genes
 
+Katrin
+
 ## Subclustering
 
-# Spatial domains
 
+
+```{r}
+# Remove since not used anymore and we need the memory.
+rm(counts, data, scale_data, assay, umap)
+
+# R will automatically clear the memory of freed objects whenever it needs more space.
+# But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
+gc(verbose=FALSE)
+```
+
+# Spatial analysis
+
+So far, we have learned the basics of analyzing spatial (and single-cell) datasets with Seurat and our workflow from above is a good starting point for an analysis.
+
+However, it treats each bin independently and without considering its spatial context. Spatial analysis methods aim to improve this by incorporating the neighborhood of the bins. Several steps of our basic workflow could be adapted accordingly. Additionaly, 
+
+## What is BANKSY?
+
+(BANKSY)[https://github.com/prabhakarlab/Banksy] is a package for the analysis of spatial data. By including neighborhood information, it is able:
+
+- improve noisy data
+- distinguish between different cell types depending on the spatial context
+- identify spatial domains
+
+The amount of neighborhood information is controlled by the `lambda` parameter:
+- With smaller values (e.g. 0.2) BANKSY focuses on the closest neighbors. This is used for cell typing.
+- With larger values (e.g. 0.8) BANKSY includes more distant neighbors. This is used for domain finding.
+
+BANKSY is an independent package that uses another framework for analysis. However, the `RunBanksy` function from the `SeuratWrappers` package allows us to run BANKSY on an Seurat object so that we do not have to learn all the details of the BANKSY package.
+
+## Improve clustering with BANKSY
+
+BANKSY can be used to as alternative to our default clustering strategy from before. We set `lambda` to a small value (0.2) so that BANKSY focuses only on the closest neighbors. Additionally, we set the number of neighbors (`k_geom`) to 15.
+
+Note that this step can take a while and is very memory-intensive. 
+
+```{r}
+sc = RunBanksy(sc,
+               assay="RNA.008um", assay_name="BANKSY.008um",
+               features="variable",
+               lambda=0.2, k_geom=15,
+               verbose=TRUE)
+gc(verbose=FALSE)
+
+# Store the BANKSY layer data more compressed
+data = as(GetAssayData(sc[["BANKSY.008um"]], layer="data"), "dgCMatrix")
+sc[["BANKSY.008um"]] = SetAssayData(sc[["BANKSY.008um"]], layer="data", new.data=data)
+rm(data)
+gc(verbose=FALSE)
+
+# Set it as default
+DefaultAssay(sc) = "BANKSY.008um"
+```
+
+We then use this assay to do PCA dimensionality reduction followed by clustering and UMAP. We will use the first 20 PCs and set the clustering resolution to 0.5. However this is just a starting point and you should try different values to find the best clustering for your data:
+
+```{r}
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15)
+sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
+sc = FindClusters(sc, cluster.name="banksy_clusters.008um", resolution=0.5, algorithm=4)
+sc = RunUMAP(sc, reduction="banksy_pca.008um", reduction.name="banksy_umap.008um", dims=1:15, return.model=TRUE)
+DefaultAssay(sc) = "RNA.008um"
+```
+
+Here are our two analyses plotted side-by-side:
+
+```{r}
+p1 = DimPlot(sc, reduction="umap.008um", label=TRUE, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat clustering")
+p2 = DimPlot(sc, reduction="banksy_umap.008um", label=TRUE, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY clustering")
+p1 | p2
+```
+
+The same comparison as spatial plot:
+
+```{r}
+p1 = SpatialDimPlot(sc, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat clustering")
+p2 = SpatialDimPlot(sc, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY clustering")
+p1 | p2
+```
+
+To decide which is one is more
+
+## Find spatial domains with BANKSY
+
+We set `lambda` to 0.8 and the number of neighbors (`k_geom`) to 50. Note that we fist delete the BANKSY assay from before. This is not strictly necessary but it will save us some memory.
+
+```{r}
+sc[["BANKSY.008um"]] = NULL
+gc(verbose=FALSE)
+
+sc = RunBanksy(sc,
+               assay="RNA.008um", assay_name="BANKSY.008um",
+               features="variable",
+               lambda=0.8, k_geom=50,
+               verbose=TRUE)
+# 50 0.8
+gc(verbose=FALSE)
+
+# Store the BANKSY layer data more compressed
+data = as(GetAssayData(sc[["BANKSY.008um"]], layer="data"), "dgCMatrix")
+sc[["BANKSY.008um"]] = SetAssayData(sc[["BANKSY.008um"]], layer="data", new.data=data)
+rm(data)
+gc(verbose=FALSE)
+
+# Set it as default
+DefaultAssay(sc) = "BANKSY.008um"
+```
+
+Now we have created a new assay `BANKSY.008um` that contains the BANKSY results. It is also now the default assay. Important: Do not scale this assay as it will overwrite the BANKSY results.
+
+```{r}
+sc
+```
 
 
 # Other useful resources
