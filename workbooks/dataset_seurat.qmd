@@ -27,14 +27,15 @@ library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
 
 # Colours
-cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", "#fedf25", 
-"#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", "#761445", "#d65b5a", 
-"#94043a", "#e7a6cd", "#204519", "#87afd1", "#9b9a9d", "#f95b70", "#83c874", 
-"#808080", "#452b5b", "#ecb100", "#f46124", "#525252", "#4c84a3", "#00bfff", 
-"#01b4c6", "#174d79", "#a6a0f2", "#76facc", "#8491be", "#a32a2f", "#1c8859", 
-"#2cc012", "#35782b", "#9c6755", "#3b3960", "#eeb0a1", "#3e1e13", "#0064c3", 
-"#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", "#000000", 
-"#a4527c", "#041859")   
+cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
+              "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
+              "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
+              "#9b9a9d", "#f95b70", "#83c874", "#808080", "#452b5b", "#ecb100", 
+              "#f46124", "#525252", "#4c84a3", "#00bfff", "#01b4c6", "#174d79", 
+              "#a6a0f2", "#76facc", "#8491be", "#a32a2f", "#1c8859", "#2cc012", 
+              "#35782b", "#9c6755", "#3b3960", "#eeb0a1", "#3e1e13", "#0064c3", 
+              "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", 
+              "#000000", "#a4527c", "#041859")   
 
 # ggplot2 defaults
 options(ggplot2.discrete.colour=cal_pal50)
@@ -44,17 +45,18 @@ options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
 
-# Parallelisation seems to be slower - remove?
-#plan("multisession", workers = 4)
-#options(future.globals.maxSize=+Inf)
-plan("sequential")
-
-# Latest (May2025) Seurat and SeuratObject seem to have a number of bugs. Downgrade for now here but also in the image?
-#library(devtools)
-#install_version("Seurat", version = "5.2.1")
-#install_version("SeuratObject", version = "5.0.2")
-
-#options(Seurat.memsafe=TRUE)
+# Hook to measure the computation time of a chunk
+# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
+knitr::knit_hooks$set(timeit = function(before, options, envir) {
+  if(before) {
+    ## code to be run before a chunk
+    tictoc::tic()
+  } else {
+    ## code to be run after a chunk
+    elapsed = tictoc::toc()$toc
+    print(paste0("Execution took ", elapsed, " seconds"))
+  }
+})
 ```
 
 # Our dataset
@@ -118,13 +120,16 @@ Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which 
 
 ```{r}
 # barcodes.tsv.gz
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", header = FALSE, nrows = 5)
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
+           header = FALSE, nrows = 5)
 
 # features.tsv.gz
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", header = FALSE, nrows = 5)
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", 
+           header = FALSE, nrows = 5)
 
 # matrix.mtx.gz
-read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", skip = 2, nrows = 5, header = FALSE, sep = " ")
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", 
+           skip = 2, nrows = 5, header = FALSE, sep = " ")
 ```
 
 ::: {.callout-tip}
@@ -339,22 +344,19 @@ Each assay and bin size should have a corresponding image. You can access a spec
 sc[["slice1.008um"]]
 ```
 
-When we say image, what we mean are the **coordinates of an image**. We can also visualize the underlying **raw image** like: 
-
 When we refer to the image in spatial transcriptomics, we usually mean the spatial coordinates associated with each bin. These coordinates tell us where each bin is located within the tissue section but not what the tissue looks like visually.
 
 However, Seurat also allows us to view the underlying histological image that was used to derive these spatial coordinates. This can help us visually inspect the tissue morphology in parallel with gene expression patterns.
 
-Here is how we can visualize the raw tissue image grid along with the spatial:
-H&E Staining
-dark = 
+In this example, **Hematoxylin and eosin (H&E) staining** was used. H&E staining is a widely used technique in histology and pathology for visualizing the morphological features of tissues. Hematoxylin stains cell nuclei a blue to purple hue by binding to nucleic acids, highlighting areas rich in DNA and RNA. Eosin is an acidic dye that stains the cytoplasm and extracellular matrix in varying shades of pink to red, depending on the protein content and tissue composition. The contrast between the basophilic (blue-purple) and eosinophilic (pink-red) structures enables clear differentiation of cellular components and tissue architecture, aiding in diagnostic assessment and research.
 
+Here is how we can visualize the raw tissue image grid along with the spatial:
 
 ```{r}
-#| fig-width: 5
+#| out-width: 5in
+#| out-height: 5in
 
-#grid.newpage()
-grid.draw(GetImage(sc[["slice1.008um"]], method="grob"))
+gridExtra::grid.arrange(GetImage(sc[["slice1.008um"]], method="grob"))
 ```
 
 ## Plotting
@@ -381,9 +383,8 @@ We can also visualize gene expression in a spatial context using a **spatial fea
 SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
 ```
 
-TODODODODODODO
 ::: {.callout-tip}
-You might see strange artefacts in the image. This can happen if you plot the image using relatively low resolution (150dpi) and then open it on a high-resolution display. In this case, you need to increase the resolution using the quarto option `dpi`. Alternatively decrease the figure size.
+You may observe visual artefacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
 :::
 
 ### Comparison Between 8µm and 16µm Bins
@@ -560,10 +561,6 @@ Why might mitochondrial content be misleading in some tissues (e.g., muscle or b
 What are the trade-offs of stricter vs. more lenient filtering?  
 :::
 
-```{r}
-knitr::knit_exit()
-```
-
 # Preprocessing
 
 After removing low-quality bins, we now prepare the dataset for downstream analysis. This **preprocessing pipeline** includes:
@@ -571,7 +568,7 @@ After removing low-quality bins, we now prepare the dataset for downstream analy
 1. Normalization of raw counts
 2. Identification of highly variable genes (HVGs)
 3. Centering and scaling of those HVGs
-4. Optional sketching of the dataset for speed (HVGs)
+4. Optional sketching of the dataset for speed
 5. Dimensionality reduction (PCA) based on the HGVs
 
 Each step ensures that only informative, reliable data is passed into clustering and annotation workflows.
@@ -611,8 +608,9 @@ Here, we determine the top 1000 HGVs:
 
 ```{r}
 sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
-#FOR NOW we take 1000 for memory issues
 ```
+
+Note that 1,000 HGVs represents the lower end of the possible range. However, for demonstration purposes and to save memory, we use 1,000 in this example.
 
 Get the top 10 HVGs and plot them:
 
@@ -676,7 +674,7 @@ Sketching is ideal for exploration on (very) large datasets. If your computing m
 
 ## Dimensionality reduction
 
-With ~20,000 genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to 2,000 HGVs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
+With ~20,000 genes, the data is too high-dimensional for visualization or clustering. At this point of the analysis, we have already reduced the dimensionality of the dataset to 1,000 HGVs. The biological manifold however can be described by far fewer dimensions than the number of (variable) genes, since expression profiles of different genes are correlated if they are involved in the same biological process. 
 
 We use Principal Component Analysis (PCA) to reduce the dimensionality. PCA finds new axes (PCs) that capture the most variance in the dataset, and projects the data onto these axes. The resulting meta-variables are called principal components (PCs).
 
@@ -709,6 +707,11 @@ You can also check which genes contribute most to each PC:
 VizDimLoadings(sc, reduction="pca.sketch", dims=1:4, nfeatures=10, balanced=TRUE)
 ```
 
+::: {.callout-tip}
+## Learnings
+Helpful YouTube video on PCA in the context of gene expression analysis is (here)[https://www.youtube.com/watch?v=FgakZw6K1QQ]
+:::
+
 ::: {.callout-note}
 ## Question
 How many PCs would you choose for further analysis? 
@@ -716,24 +719,33 @@ How many PCs would you choose for further analysis?
 
 # Clustering and visualization
 
-- a
-- b
+In the following, we **cluster** spatial bins based on their gene expression profiles and use **UMAP** (Uniform Manifold Approximation and Projection) to visualise the results in two dimensions.
 
+**Clustering** is typically done using unsupervised algorithms (e.g., Louvain or Leiden) that group bins based on similarities across the full gene expression space. This helps to identify regions within the tissue that share similar transcriptional signatures, which may correspond to distinct anatomical structures or functional states. 
+
+**UMAP** is a dimensionality reduction technique that projects high-dimensional data into a lower-dimensional space, in this case 2D, to reveal underlying structure. In UMAP plots, each bin is shown as a point, allowing us to detect substructures or transitions within clusters, identify outliers or ambiguous regions, communicate findings visually and intuitively. 
+
+Clusters are discrete groupings assigned algorithmically based on expression similarity; each bin belongs to exactly one cluster. UMAP clouds, in contrast, are continuous visual projections. While clusters often appear as distinct clouds in UMAP space, overlaps can occur, especially in biologically complex areas. UMAP may reveal gradual transitions or relationships that clustering alone cannot capture.
 
 ## Clustering of the sketched dataset
 
-For clustering, Seurat applies a graph-based approach. In short, Seurat first identifies for each bin its k nearest neighbors based on euclidean distance in PCA space. Using this neighborhood information, it then builds a nearest-neighbors graph (NN) and an improved version called shared nearest neighbor (SNN) graph.
+Seurat uses a graph-based approach for clustering. In short, Seurat first constructs a graph by identifying the k-nearest neighbors for each bin in the PCA space based on Euclidean distance (NN). It then builds a refined version of the neighbor graph by considering shared neighbors between bins (SNN). Finally, a clustering algorithm is applied to the graph to identify groups of similar bins. These groups are then considered distinct cell populations. 
 
-We construct these graphs with the `FindNeighbors` function. We use the first 30 PCs as input and set the number of nearest neighbors to 20:
+We begin by creating a nearest-neighbor graph using the `FindNeighbors` function in Seurat. We use the first 30 PCs as input and set the number of nearest neighbors to 20:
 
 ```{r}
 sc = FindNeighbors(sc, reduction="pca.sketch", dims=1:30, k.param=20)
 Graphs(sc)
 ```
 
-Seurat then splits the SNN graph into well-connected communities. It does this by iteratively grouping neighboring bins together while trying to optimize the modularity. Modularity is is a measure for connectivity in graphs and a high value indicates that the bins within a community are more connected to each other than to bins outside of the community. The final communities are called clusters.
+After constructing the nearest-neighbor graph, we apply the Leiden algorithm to perform the clustering. The Leiden algorithm is an improvement over the Louvain method and works by optimizing modularity. It groups bins into clusters such that bins within the same cluster are more connected to each other than to bins in other clusters.
 
-We run the `FindClusters` function and use the Leiden algorithm instead of the default Louvain algorithm (`algorithm=4`). The resolution of the clustering can be controlled with the `resolution` parameter. Higher values lead to more clusters. We use `resolution=2` as starting point:
+We call the `FindClusters` function with `algorithm=4`, which tells Seurat to use the Leiden algorithm. We also need to specify the resolution parameter. This parameter controls the granularity of the clustering:
+
+* Higher resolution values lead to more clusters  
+* Lower resolution values lead to fewer clusters  
+
+We will start with a resolution of 2, but this can be adjusted later depending on the number of clusters you wish to identify:
 
 ```{r}
 sc = FindClusters(sc, resolution=2, algorithm=4)
@@ -750,9 +762,14 @@ table(sc$seurat_clusters.sketch)
 
 Note that we can provide multiple resolution values to test different clustering resolutions.
 
+::: {.callout-note}
+## Assignment
+Test different cluster resolutions and observe the number of clusters you receive. 
+:::
+
 ## UMAP of the sketched dataset
 
-Additionally, we run a dimensionality reduction method called Uniform Manifold Approximation and Projection (UMAP). UMAP is a non-linear method that embeds high-dimensional data into 2D while trying to preserve the local structure of the data. It is often used for visualization. However it should be avoided to draw biological conclusions from the UMAP only without actual clustering.
+Now, we move on to generating a UMAP plot, which provides a visual representation of the dataset in lower-dimensional space. This helps to visually identify groups of similar cells, making it easier to explore and interpret the data.
 
 We run the `RunUMAP` function and use the first 30 PCs as input. This creates a new dimensionality reduction object called `umap.sketch`:
 
@@ -760,7 +777,7 @@ We run the `RunUMAP` function and use the first 30 PCs as input. This creates a 
 sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch", dims=1:30, return.model=TRUE)
 ```
 
-Note that `umap.sketch` is now the default dimensionality reduction. We can plot the clustering on the UMAP as well as in spatial context:
+Note that `umap.sketch` is now the default dimensionality reduction. We can color the clustering on the UMAP as well as in spatial context:
 
 ```{r}
 p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
@@ -772,7 +789,9 @@ Here we can nicely see that we only analysed a subsampled dataset.
 
 ## Analysing the full dataset
 
-We now use the `ProjectData`function to project the cluster labels, PCA and UMAP, that we learned from the sketch assay, to the entire dataset:
+Once we have finished analyzing the sketched dataset, we can project the learned cluster labels, PCA, and UMAP from the sketch assay onto the entire dataset. This allows us to transfer the insights gained from the subsampled dataset to the full dataset, which may have additional complexity.
+
+We use the `ProjectData` function to carry out this projection. Here’s the code to project the data from the sketch assay to the full dataset:
 
 ```{r}
 sc = ProjectData(sc,
@@ -797,7 +816,7 @@ DefaultAssay(sc) = "RNA.008um"
 gc()
 ```
 
-The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and a full clustering (`seurat_clusters.008um`). We plot the clustering of the full dataset on the UMAP as well as in spatial context:
+The Seurat object now contains a full PCA (`pca.008um`), a full UMAP (`umap.008um`) and a full clustering (`seurat_clusters.008um`). We color the clusters of the full dataset on the UMAP as well as in spatial context:
 
 ```{r}
 p1 = DimPlot(sc, reduction="umap.008um", label=TRUE) + NoLegend()
@@ -805,7 +824,9 @@ p2 = SpatialDimPlot(sc) + NoLegend() + scale_fill_manual(values=cal_pal50)
 p1 | p2
 ```
 
-When we have so many different clusters (of which some are spatially restricted and others not), it can be challenging to interpret their spatial location. Here it helps to highlight individual clusters:
+When dealing with many clusters, some of which may be spatially restricted while others are not, it can be challenging to interpret their spatial distribution. In such cases, highlighting individual clusters can provide more clarity.
+
+We can highlight specific clusters by using the `CellsByIdentities` function to select bins belonging to particular clusters. Here, we highlight clusters 16 and 8:
 
 ```{r}
 cluster_bins = CellsByIdentities(sc, idents = c(16, 8))
@@ -814,31 +835,62 @@ cluster_bins[["NA"]] = NULL
 SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
-## Marker genes
+::: {.callout-tip}
+## Recommendations
 
-Once we have clustered the data, we can identify marker genes for each cluster. Marker genes are genes that are differentially expressed in a specific cluster compared to all other clusters.
+* Clustering  
+  * Test different resolution values to find the best clustering solution for your data  
+* UMAP  
+  * UMAP "cloud" sizes and the distance between them may not be meaningful ast the method has a local notion of distance
+  * Helpful explanation on YouTube (here)[https://www.youtube.com/watch?v=eN0wFzBA4Sc]
+  * Helpful documentation and option to explore (here)[https://pair-code.github.io/understanding-umap/]  
+* Keep in mind that this represents only a portion of the entire dataset, and the full dataset may reveal additional insights
+* Take your time. In scRNA-seq analysis, this is perhaps the most time-consuming step of the basic analysis
+:::
 
-## Plotting
+## What cell types correspond to the clusters? 
 
-We can explore the results with different plotting functions. We can plot gene expression (or other numeric values) per cluster as violin plot to get an idea of their distribution:
+To identify the cell types corresponding to the clusters, we typically follow these steps:
+
+* **Cluster marker genes**: Use differential gene expression analysis to find genes that are specifically expressed in each cluster. These can serve as markers for the corresponding cell types.
+* **Known marker genes**: Visualize the expression of known cell-type markers on the UMAP to help associate clusters with specific cell types.
+* **Mapping a reference dataset**: Use external datasets to map cell-type labels onto your data, enhancing the accuracy of your cell-type predictions.
+
+By using these strategies, you can correlate the clusters with biological cell types and better understand the cell composition of your dataset.
+
+## Cluster marker genes
+
+One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are significantly up- or downregulated in one cluster compared to others, which can be used to characterize the biological identity of the cells in each cluster.
+
+You can use Seurat's FindMarkers function to identify differentially expressed genes between clusters:
+
+...
+
+...
+
+## Plotting gene expression
+
+To explore the results and visualize gene expression across different clusters, we can use various plotting functions.
+
+A **violin plot** allows us to visualize the distribution of gene expression across clusters. For example, we can plot the expression of genes Acta2 and Apoe:
 
 ```{r}
 VlnPlot(sc, features=c("Acta2", "Apoe"), pt.size=0, ncol=1) + NoLegend()
 ```
 
-We can also plot them on top of our UMAP visualization:
+We can also visualize the gene expression directly on top of the **UMAP plot**. This will show the expression of genes such as Acta2 and Apoe across all cells in the low-dimensional UMAP space:
 
 ```{r}
 FeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
 ```
 
-And of course also in spatial context:
+Since we are working with spatial data, you can visualize gene expression in the **spatial context**, showing where the genes are expressed on the tissue section:
 
 ```{r}
 SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
 ```
 
-More comprehensive options are the dot plot and the heatmap. They allow us to visualize e.g. expression of multiple genes for multiple cluster in one plot. Here we plot the expression of three genes for clusters 1 to 10 as dot plot:
+A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. Here's an example where we plot the expression of 10 genes across clusters 1 to 10:
 
 ```{r}
 DotPlot(sc, idents=1:10, 
@@ -848,7 +900,7 @@ DotPlot(sc, idents=1:10,
   theme(axis.text.x=element_text(angle=45, hjust=1))
 ```
 
-We can also plot the same data as heatmap. However, we can do this only for a subset of cells:
+For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of cells. This allows for a more focused analysis of gene expression patterns across specific clusters.
 
 ```{r}
 set.seed(1)
@@ -861,14 +913,6 @@ DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", 
   guides(colour="none")
 ```
 
-## Marker genes
-
-Katrin
-
-## Subclustering
-
-
-
 ```{r}
 # Remove since not used anymore and we need the memory.
 rm(counts, data, scale_data, assay, umap)
@@ -876,7 +920,13 @@ rm(counts, data, scale_data, assay, umap)
 # R will automatically clear the memory of freed objects whenever it needs more space.
 # But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
 gc(verbose=FALSE)
+knitr::knit_exit()
 ```
+
+::: {.callout-note}
+## Assignment
+Visualize cluster marker genes and known marker genes on the UMAP and in spatial context, and identify at least one cell type from it. 
+:::
 
 # Spatial analysis
 
@@ -987,5 +1037,6 @@ sc
 
 - [OSTA Visium HD Workflow](https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html)
 - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
+- [banksy](https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md)
 
 
