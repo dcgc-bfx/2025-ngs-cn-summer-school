@@ -603,9 +603,9 @@ By using these strategies, you can correlate the clusters with biological cell t
 
 ## Cluster marker genes
 
-One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are significantly up- or down-regulated in one cluster compared to all other clusters, which can be used to characterize the biological identity of the cells in each cluster. 
+One of the first steps in identifying the cell types of each cluster is to determine cluster-specific marker genes. These are genes that are significantly up- or down-regulated in one cluster compared to all other clusters, and they can be used to characterize the biological identity of the cells in each cluster. 
 
-A good clustering of cells typically results in good marker genes. Hence, if you cannot find good marker genes you may need to go back to the start of the workflow and adapt your parameters. Note that we also determine genes that are particularly down-regulated in one cluster, even if these are not marker genes in the classical sense.
+A good clustering of cells typically results in good marker genes. Hence, if you cannot find good marker genes you may need to go back to the start of the workflow and adapt your parameters. 
 
 Resulting *p*-values are adjusted using the Bonferroni method. However, beware that *p*-values are likely inflated, since both clusters and marker genes were determined based on the same gene expression data, and there ought to be gene expression differences by design. Nevertheless, *p*-values can be used to sort and prioritize marker genes. 
 
@@ -621,17 +621,10 @@ markers = FindAllMarkers(object=sc,
                          max.cells.per.ident=1000)
 ```
 
-::: {.callout-note}
-## Assignment
-
-Extract a table of the top 5 marker genes per cluster, ranked by the adjusted *p*-value and log2 foldchange. 
-:::
+Let us now extract and visualize the top 3 marker genes for each cluster based on the adjusted p-value and log2 foldchange: 
 
 ```{r}
 #| label: clusterannot_2
-
-# Do this here
-# markers_top = ...
 
 # Solution
 markers_top = markers %>% 
@@ -644,6 +637,8 @@ markers_top = markers %>%
 gt::gt(markers_top) %>% 
   gt::tab_options(container.height=450)
 ```
+
+</br>
 
 Good marker genes are highly and possibly even only expressed in one cluster as compared to all other clusters. However, sometimes marker genes are also expressed in other clusters, or are declared as marker genes in these clusters, for example cell lineage markers that are shared by different cell sub types. To evaluate marker genes, it is essential to visualize their expression patterns.
 
@@ -686,9 +681,9 @@ We can use the identified cluster marker genes to perform functional enrichment 
 Try to find the identity of one cluster! 
 :::
 
-## Plotting gene expression
+## Plotting known marker genes
 
-To further explore the results and visualize gene expression across different clusters, we can use various plotting functions.
+To further explore the results and visualize gene expression for known marker genes across different clusters, we can use various plotting functions.
 
 A **violin plot** allows us to visualize the distribution of gene expression across clusters. For example, we can plot the expression of genes Acta2 and Apoe:
 
@@ -736,7 +731,8 @@ cluster_bins = Cells(sc) %>% sample(10000)
 
 DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"), 
           cells=cluster_bins,
-          group.colors=cal_pal50) + 
+          group.colors=cal_pal50, 
+          label=FALSE) + 
   scale_fill_viridis() +
   guides(colour="none")
 ```
@@ -752,10 +748,6 @@ rm(counts, data, scale_data, assay, umap)
 gc()
 ```
 
-```{r}
-knitr::knit_exit()
-```
-
 ::: {.callout-note}
 ## Assignment
 Visualize cluster marker genes and known marker genes on the UMAP and in spatial context, and identify at least one cell type from it. 
@@ -763,42 +755,27 @@ Visualize cluster marker genes and known marker genes on the UMAP and in spatial
 
 # Spatial clustering and domains
 
-TODODODOD: This takes very long. Two solutions:
-- Crop the 8 um dataset to subset already at the beginning
-cortex.coordinates <- as.data.frame(read.csv("/brahms/lis/visium_hd/final_mouse/cortex-hippocampus_coordinates.csv"))
-cortex <- CreateSegmentation(cortex.coordinates)
+So far, we have explored the **fundamentals of analyzing spatial (and single-cell) transcriptomic data** using Seurat. The workflow introduced above serves is a good starting point.
 
-object[["cortex"]] <- Overlay(object[["slice1.008um"]], cortex)
-cortex <- subset(object, cells = Cells(object[["cortex"]]))
-Could also be a good preprocessing step
-
-- Take only the first 10 dimension
-- Run this part with 16 um dataset
-- Skip one part
-
-So far, we have learned the basics of analyzing spatial (and single-cell) datasets with Seurat and our workflow from above is a good starting point for an analysis.
-
-However, it treats each bin independently and without considering its spatial context. Spatial analysis methods aim to improve this by incorporating the neighborhood of the bins. Several steps of our basic workflow could be adapted accordingly. Additionaly, 
+However, a key limitation of this approach is that it treats each spatial bin independently, without considering its physical context within the tissue. Spatial analysis methods aim to address this by incorporating neighborhood information—enhancing biological interpretation and robustness. Several steps in our basic workflow can be extended to include this spatial context.
 
 ## What is BANKSY?
 
-(BANKSY)[https://github.com/prabhakarlab/Banksy] is a package for the analysis of spatial data. By including neighborhood information, it is able:
+[BANKSY](https://github.com/prabhakarlab/Banksy) is a computational method specifically designed for spatial transcriptomics analysis. By integrating information from neighboring bins, BANKSY can reduce noise in gene expression data, distinguish between different cell types based on spatial context, and identify spatial domains. 
 
-- improve noisy data
-- distinguish between different cell types depending on the spatial context
-- identify spatial domains
+BANKSY represents each cell or bin not only by its own transcriptomic profile but also by the average expression of its local neighborhood. This dual representation captures both intrinsic cellular identity and microenvironmental context. The degree to which neighborhood information is incorporated is controlled by the lambda parameter:  
+* Lower values (e.g., **lambda = 0.2**) emphasize immediate neighbors — useful for **cell typing**  
+* Higher values (e.g., **lambda = 0.8**) incorporate broader spatial context — useful for **domain detection**  
 
-The amount of neighborhood information is controlled by the `lambda` parameter:
-- With smaller values (e.g. 0.2) BANKSY focuses on the closest neighbors. This is used for cell typing.
-- With larger values (e.g. 0.8) BANKSY includes more distant neighbors. This is used for domain finding.
+Although BANKSY is a standalone tool with its own framework, it can be integrated into Seurat workflows using the `RunBanksy` function from the `SeuratWrappers` package. This allows users to apply BANKSY directly to Seurat objects.
 
-BANKSY is an independent package that uses another framework for analysis. However, the `RunBanksy` function from the `SeuratWrappers` package allows us to run BANKSY on an Seurat object so that we do not have to learn all the details of the BANKSY package.
+In summary, BANKSY leverages the principle that a cell’s identity is shaped not only by its own gene expression but also by its surrounding environment. By adjusting a single hyperparameter, it provides flexibility to shift focus from cellular identity to higher-order tissue organization.
 
 ## Improve clustering with BANKSY
 
-BANKSY can be used to as alternative to our default clustering strategy from before. We set `lambda` to a small value (0.2) so that BANKSY focuses only on the closest neighbors. Additionally, we set the number of neighbors (`k_geom`) to 15.
+BANKSY can serve as an alternative to the default clustering approach we used earlier. In this step, we apply BANKSY with a low lambda value (0.2) to focus on local neighborhood information, and set the number of neighbors (k_geom) to 15.
 
-Note that this step can take a while and is very memory-intensive. 
+**Note:** This step can be time- and memory-intensive.
 
 ```{r}
 #| label: spatial_1
@@ -815,7 +792,9 @@ DefaultAssay(sc) = "BANKSY.008um"
 gc()
 ```
 
-Now we have created a new assay `BANKSY.008um` that contains the BANKSY results. It is also now the default assay. Important: Do not scale this assay as it will overwrite the BANKSY results.
+At this point, we have created a new assay `BANKSY.008um`, containing the BANKSY-transformed data, and have set it as the default.
+
+**⚠️ Important**: BANKSY fills the `scale.data` layer. Therefore do not call `ScaleData` on the BANKSY assay as this negates the effects of lamda. 
 
 ```{r}
 #| label: spatial_2
@@ -823,7 +802,7 @@ Now we have created a new assay `BANKSY.008um` that contains the BANKSY results.
 sc
 ```
 
-We then use this assay to do PCA dimensionality reduction followed by clustering and UMAP. We will use the first 20 PCs and set the clustering resolution to 0.5. However this is just a starting point and you should try different values to find the best clustering for your data:
+Next, we apply PCA, clustering, and UMAP using the BANKSY assay. We use the first 15 PCs and set a clustering resolution of 0.5, though these values can and should be adjusted depending on your dataset.
 
 ```{r}
 #| label: spatial_3
@@ -837,7 +816,7 @@ sc$banksy_clusters.008um = sc$seurat_clusters
 DefaultAssay(sc) = "RNA.008um"
 ```
 
-Here are our two analyses plotted side-by-side:
+Here we compare the results of default **Seurat clustering versus BANKSY clustering**, first using UMAP plots:
 
 ```{r}
 #| label: spatial_4
@@ -847,7 +826,7 @@ p2 = DimPlot(sc, reduction="banksy_umap.008um", label=TRUE, group.by="banksy_clu
 p1 | p2
 ```
 
-The same comparison as spatial plots:
+And as spatial plots:
 
 ```{r}
 #| label: spatial_5
@@ -857,12 +836,18 @@ p2 = SpatialDimPlot(sc, group.by="banksy_clusters.008um") + NoLegend() + ggtitle
 p1 | p2
 ```
 
-Note that the BANKSY analysis might not automatically be the better one. You should check the results and determine which analysis make biologically more sense.
+::: {.callout-tip}
+## Recommendations
+BANKSY does not automatically produce better results. Always evaluate both clustering outputs in the context of your biological question and data quality.
+:::
 
-## Find spatial domains with BANKSY
+## Identifying spatial domains with BANKSY
 
-By tuning the `lambda` parameter, we can also focus on larger structures, i.e., spatial domains. With bigger `lambda` values and more neighbors, it will include more bins into the analysis. We set `lambda` to 0.8 and the number of neighbors (`k_geom`) to 50. 
-Note that we fist delete the BANKSY assay from the previous analysis. This is not strictly necessary but it will save us some memory.
+In addition to improving clustering, BANKSY can be tuned to detect larger-scale tissue structures, often referred to as spatial domains. By increasing the `lambda` parameter and the number of neighbors (`k_geom`), BANKSY incorporates more spatial context and captures broader patterns of gene expression across the tissue.
+
+In the following example, we set `lambda=0.8` and `k_geom=50` to include more neighboring bins in the analysis.
+
+**Note:** We first remove the BANKSY assay from the previous run to conserve memory. This step is optional but will save us some memory resources.
 
 ```{r}
 #| label: spatial_6
@@ -880,7 +865,7 @@ DefaultAssay(sc) = "BANKSY.008um"
 gc()
 ```
 
-As before, we run PCA, clustering and UMAP with 15 PCs and a clustering resolution of 0.5. Tune these parameters for your data:
+As before, we perform PCA, clustering, and UMAP on the BANKSY assay. We use the first 10 PCs and a clustering resolution of 0.5, but these values should again be adjusted depending on your dataset:
 
 ```{r}
 #| label: spatial_7
@@ -891,7 +876,9 @@ sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
 sc$banksy_domains.008um = sc$seurat_clusters
 ```
 
-Comparison here - why similar? Motivate to try different values
+If your clustering results look similar to those from the previous BANKSY run (with `lambda=0.2`), this could indicate that the dominant tissue structures are already captured at a local level. We encourage you to systematically explore different parameter settings for `lambda`, `k_geom`, and `resolution` to assess their impact on clustering outcomes and spatial domain resolution.
+
+Since this BANKSY run is also complete, we again remove the assay and PCA reduction to free up memory:
 
 ```{r}
 #| label: spatial_8
@@ -903,24 +890,30 @@ sc[["banksy_pca.008um"]] = NULL
 gc()
 ```
 
+::: {.callout-tip}
+## Recommended reading
+
+If you want to learn more about BANKSY, we find these pages helpful: 
+* https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md  
+* https://github.com/prabhakarlab/Banksy?tab=readme-ov-file
+
 # Cell type annotation by deconvolution
 
-- a
-- b
+Spatial transcriptomics data often require deconvolution to **resolve the cellular composition** of individual spatial units (bins). This section guides you through the process of estimating cell type compositions in Visium HD data using the RCTD method from the `spacexr` package.
 
 ## What is deconvolution?
 
-Spatial transcriptomics methods like Visium HD can contain zero to multiple cells per spot (in our case bin) which might be fully or partially contained, depending on bin resolution, cell size and cell density. Thus we need to run dedicated deconvolution methods to estimate the cell type composition of each bin. In addition, these methods also should take into account the neighborhood of the bins.
+In spatial transcriptomics, such as 10x Visium HD, each bin may contain zero, one, or multiple cells, depending on the resolution, cell size, and local cell density. As a result, we cannot assume that each bin corresponds to a single cell. To address this, deconvolution methods are used to estimate the proportion of different cell types within each bin.
 
-One such method is Robust Cell Type Decomposition (RCTD) implemented in the (spacexr)[https://github.com/dmcable/spacexr] package which uses a single-cell reference to deconvolve bin into cells. RCTD learns cell type profiles from the single-cell reference, and uses these to label the spatial transcriptomics bins as cell types.
+These methods also often incorporate spatial information (i.e., neighborhood relationships between bins) to improve accuracy.
 
-As reference, we will use the (Allen Brain atlas)[https://portal.brain-map.org/], specifically the single-cell transcriptome dataset reduced to 200,000 cells (and rare cell types removed). Additionally, for this tutorial, we will only annotate the cortex region of the Visium HD dataset.
+One such method is **Robust Cell Type Decomposition (RCTD)**, implemented in the [`spacexr`](https://github.com/dmcable/spacexr) package. RCTD learns gene expression profiles of cell types from a **single-cell reference dataset** and uses these profiles to deconvolve spatial bins into estimated cell type compositions.
 
-## Subset the cortex
+For this tutorial, we use a preprocessed reference derived from the [Allen Brain atlas](https://portal.brain-map.org/) single-cell dataset, filtered to include 200,000 cells with rare cell types removed. We will annotate only the cortex region of the Visium HD dataset.
 
-https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=0
+## Subset the cortex region
 
-We read in the (image) coordinates of the cortex region from a CSV file and convert them into a segmentation object with `CreateSegmentation`. Next we use the `Overlay` function to identify all bins in our spatial dataset that fall into the cortex region as cortex "image": 
+We first extract the cortex region using [pre-defined coordinates](https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=0) from a CSV file and convert them into a segmentation object with `CreateSegmentation`. Next we use the `Overlay` function to identify all bins in our spatial dataset that fall into the cortex region: 
 
 ```{r}
 cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
@@ -930,7 +923,7 @@ sc[["cortex"]] = Overlay(sc[["slice1.008um"]], cortex_coordinates)
 SpatialDimPlot(sc, images="cortex") + NoLegend() + scale_fill_manual(values=cal_pal50)
 ```
 
-Finally, we create a Seurat object that only includes the cells that are in the cortex region.
+Next, we create a Seurat object that only includes the bins that fall within the cortex region:
 
 ```{r}
 cortex_bins = Cells(sc[["cortex"]])
@@ -944,7 +937,7 @@ cortex[["banksy_umap.008um"]] = NULL
 cortex
 ```
 
-The cortex object still contains ~200000 bins. For computational efficiency, we will sketch the cortex object to reduce the number of bins to 10,000 (FOR THIS TUROIAL) followed by data scaling and PCA dimensionality reduction.
+To make the analysis computationally manageable, we sketch the dataset down to 10,000 bins for this tutorial, then perform standard scaling and PCA:
 
 ```{r}
 # Sketch
@@ -963,7 +956,7 @@ cortex = ScaleData(cortex, features=VariableFeatures(cortex))
 cortex = RunPCA(cortex, reduction.name="pca.sketch", features=VariableFeatures(cortex), npcs=50, nfeatures.print=5)
 ```
 
-Finally, we need to convert the cortex Seurat object into a format that can be used the spacexr package. We provide the counts, the coordinates of the bins and the total counts per bin:
+We now prepare the `SpatialRNA` object required by `spacexr`:
 
 ```{r}
 # Counts
@@ -981,22 +974,22 @@ query = spacexr::SpatialRNA(coords, counts, total_counts)
 gc()
 ```
 
-## Get the reference
+## Load and prepare the reference dataset
 
-The Allen Brain reference dataset has already been downloaded from (here)[https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0] and was saved asSeurat object (`datasets/allen_scRNAseq_ref.Rds`). We will load it:
+We now load the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
 
 ```{r}
 ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
-The object contains the raw counts as well as precomputed cell annotations. For our analysis we are interested in cell type annotations which can be found in the column `subclass_label`:
+We use the `subclass_label` column for cell type annotations:
 
 ```{r}
 ref[[]] %>% dplyr::select(subclass_label) %>% head()
 ```
 
-To use it as reference for deconvolution with RCTD, we need to convert the Seurat object to a spacexr `Reference` object:
+We convert this Seurat object into a `spacexr` Reference object:
 
 ```{r}
 # Counts
@@ -1019,16 +1012,17 @@ gc()
 
 ## Run deconvolution using RCTD
 
+We now run the RCTD algorithm. This may take some time depending on the number of bins and used cores.
+
 ```{r}
 RCTD = create.RCTD(query, ref, max_cores = 25)
 gc()
 ```
 
 ```{r}
-# Maybedo not run but precompute and let them load it?
+# Maybe do not run but precompute and let them load it?
 RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
 ```
-
 
 # Other useful resources
 
