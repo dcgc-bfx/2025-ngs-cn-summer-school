@@ -25,6 +25,7 @@ library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
+library(spacexr)    # Deconvolution 
 
 # Colours
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
@@ -1044,7 +1045,20 @@ gc()
 Visualize cluster marker genes and known marker genes on the UMAP and in spatial context, and identify at least one cell type from it. 
 :::
 
-# Spatial analysis
+# Spatial clustering and domains
+
+TODODODOD: This takes very long. Two solutions:
+- Crop the 8 um dataset to subset already at the beginning
+cortex.coordinates <- as.data.frame(read.csv("/brahms/lis/visium_hd/final_mouse/cortex-hippocampus_coordinates.csv"))
+cortex <- CreateSegmentation(cortex.coordinates)
+
+object[["cortex"]] <- Overlay(object[["slice1.008um"]], cortex)
+cortex <- subset(object, cells = Cells(object[["cortex"]]))
+Could also be a good preprocessing step
+
+- Take only the first 10 dimension
+- Run this part with 16 um dataset
+- Skip one part
 
 So far, we have learned the basics of analyzing spatial (and single-cell) datasets with Seurat and our workflow from above is a good starting point for an analysis.
 
@@ -1088,12 +1102,16 @@ gc()
 Now we have created a new assay `BANKSY.008um` that contains the BANKSY results. It is also now the default assay. Important: Do not scale this assay as it will overwrite the BANKSY results.
 
 ```{r}
+#| label: spatial_2
+
 sc
 ```
 
 We then use this assay to do PCA dimensionality reduction followed by clustering and UMAP. We will use the first 20 PCs and set the clustering resolution to 0.5. However this is just a starting point and you should try different values to find the best clustering for your data:
 
 ```{r}
+#| label: spatial_3
+
 sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15, nfeatures.print=5)
 sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
 sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
@@ -1106,6 +1124,8 @@ DefaultAssay(sc) = "RNA.008um"
 Here are our two analyses plotted side-by-side:
 
 ```{r}
+#| label: spatial_4
+
 p1 = DimPlot(sc, reduction="umap.008um", label=TRUE, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat clustering")
 p2 = DimPlot(sc, reduction="banksy_umap.008um", label=TRUE, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY clustering")
 p1 | p2
@@ -1114,6 +1134,8 @@ p1 | p2
 The same comparison as spatial plots:
 
 ```{r}
+#| label: spatial_5
+
 p1 = SpatialDimPlot(sc, group.by="seurat_clusters.008um") + NoLegend() + ggtitle("Seurat") + scale_fill_manual(values=cal_pal50)
 p2 = SpatialDimPlot(sc, group.by="banksy_clusters.008um") + NoLegend() + ggtitle("BANKSY") + scale_fill_manual(values=cal_pal50)
 p1 | p2
@@ -1127,7 +1149,9 @@ By tuning the `lambda` parameter, we can also focus on larger structures, i.e., 
 Note that we fist delete the BANKSY assay from the previous analysis. This is not strictly necessary but it will save us some memory.
 
 ```{r}
-DefaultAssay(sc) = "BANKSY.008um"
+#| label: spatial_6
+
+DefaultAssay(sc) = "RNA.008um"
 sc = RunBanksy(sc,
                assay="RNA.008um", assay_name="BANKSY.008um",
                features="variable",
@@ -1143,13 +1167,84 @@ gc()
 As before, we run PCA, clustering and UMAP with 15 PCs and a clustering resolution of 0.5. Tune these parameters for your data:
 
 ```{r}
-sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15, nfeatures.print=5)
-sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
+#| label: spatial_7
+
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=10, nfeatures.print=5)
+sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:10)
 sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
 sc$banksy_domains.008um = sc$seurat_clusters
 ```
 
-Comparison here - why similar? Motivate to try diffewrent values
+Comparison here - why similar? Motivate to try different values
+
+```{r}
+#| label: spatial_8
+
+# Remove BANKSY assay and pca since not used anymore and we need the memory.
+DefaultAssay(sc) = "RNA.008um"
+sc[["BANKSY.008um"]] = NULL
+sc[["banksy_pca.008um"]] = NULL
+
+gc()
+```
+
+# Deconvolution
+
+- a
+- b
+
+## What is deconvolution?
+
+!!! Copied from vignette
+
+Seurat v5 also includes support for Robust Cell Type Decomposition, a computational approach to deconvolve spot-level data from spatial datasets, when provided with an scRNA-seq reference. RCTD has been shown to accurately annotate spatial data from a variety of technologies, including SLIDE-seq, Visium, and the 10x Xenium in-situ spatial platform. We observe good performance with Visium HD as well.
+
+To run RCTD, we first install the spacexr package from GitHub which implements RCTD. When running RCTD, we follow the instructions from the RCTD vignette.
+
+RCTD takes an scRNA-seq dataset as a reference, and a spatial dataset as a query. For a reference, we use a mouse scRNA-seq dataset from the Allen Brain Atlas, available for download here. The reference scRNAs-eq dataset has been reduced to 200,000 cells (and rare cell types <25 cells have been removed).
+
+We use the cortex Visium HD object as the spatial query. For computational efficiency, we sketch the spatial query dataset, apply RCTD to deconvolute the ‘sketched’ cortical cells and annotate them, and then project these annotations to the full cortical dataset.
+
+
+```{r}
+ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
+ref
+```
+
+```{r}
+ref[[]]
+```
+
+```{r}
+
+counts = GetAssayData(ref, assay="RNA", layer="counts")
+cluster = as.factor(ref$subclass_label)
+levels(cluster) = gsub("/", "-", levels(cluster))
+cluster = droplevels(cluster)
+nUMI = ref$nCount_RNA
+
+ref = Reference(counts, cluster, nUMI, n_max_cells=1000) # set low for demo
+
+rm(counts)
+gc()
+```
+
+```{r}
+
+counts = GetAssayData(sc, assay="sketch", layer="counts")
+bins_sketch = Cells(sc[["sketch"]])
+coords = GetTissueCoordinates(sc)[bins_sketch, 1:2]
+query = SpatialRNA(coords, counts, colSums(counts))
+```
+
+```{r}
+RCTD = create.RCTD(query, ref, max_cores = 25, fc_cutoff = 1, fc_cutoff_reg = 1) # set high for demo
+```
+
+```{r}
+# Maybedo not run but precompute and let them load it?
+RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
+```
 
 
 # Other useful resources
