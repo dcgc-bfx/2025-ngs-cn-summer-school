@@ -1,0 +1,452 @@
+---
+title: "🧬 Spatial Transcriptomics Analysis (part 1)"
+format: html
+---
+
+# Welcome to the NGS-CN Summer School on Spatial Transcriptomics Analysis!
+
+Spatial transcriptomics allows us to measure gene expression across tissue sections while preserving spatial information, helping us understand not just **what** genes are active, but **where** they are active.
+
+In this practical session, we will explore how to analyze spatial transcriptomics data using **R** and **RStudio**. Whether you are new to spatial data or already familiar with single-cell workflows, this guide will walk you through the essential steps.
+
+Feel free to use your personal workbook to make notes, track your progress, and revisit it after this workshop.
+
+---
+
+In this **first part**, we will explore the dataset, learn how to load it into R, and examine how the data is structured within a Seurat object. We will also perform some initial visualisations to familiarise ourselves with the dataset and its spatial features.
+
+## Setting up your R environment 
+
+Before diving into the data, we need to load a few important R packages. These libraries will provide the tools we need for analysis and visualization.
+
+```{r}
+#| label: setup
+#| message: false
+
+library(Seurat)     # Main package for single-cell and spatial transcriptomics analysis
+library(SeuratWrappers) # Add-ons for Seurat
+library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
+library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
+library(grid)       # For other plots
+library(viridis)    # Our continuous colour palette
+library(spacexr)    # Deconvolution 
+
+# Colours
+cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
+              "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
+              "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
+              "#9b9a9d", "#f95b70", "#83c874", "#808080", "#452b5b", "#ecb100", 
+              "#f46124", "#525252", "#4c84a3", "#00bfff", "#01b4c6", "#174d79", 
+              "#a6a0f2", "#76facc", "#8491be", "#a32a2f", "#1c8859", "#2cc012", 
+              "#35782b", "#9c6755", "#3b3960", "#eeb0a1", "#3e1e13", "#0064c3", 
+              "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", 
+              "#000000", "#a4527c", "#041859")   
+
+# ggplot2 defaults
+options(ggplot2.discrete.colour=cal_pal50)
+options(ggplot2.discrete.fill=cal_pal50)
+options(ggplot2.continuous.colour="viridis")
+options(ggplot2.continuous.fill="viridis")
+options(ggplot2.binned.colour="viridis")
+options(ggplot2.binned.fill="viridis")
+
+# Hook to measure the computation time of a chunk
+# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
+knitr::knit_hooks$set(timeit = function(before, options, envir) {
+  if(before) {
+    ## code to be run before a chunk
+    tictoc::tic()
+  } else {
+    ## code to be run after a chunk
+    elapsed = tictoc::toc()$toc
+    print(paste0("Execution took ", elapsed, " seconds"))
+  }
+})
+```
+
+# Our dataset
+
+In this section, we will introduce the dataset we are using for this training session.
+
+## Dataset overview
+
+We use a **mouse brain dataset** from [10x Genomics](https://www.10xgenomics.com/):   
+
+* Source: Downloaded from [here](https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he)   
+* Sample: Male C57BL/6 mouse, 8 weeks old   
+* Tissue: Brain tissue block (Formalin-Fixed Paraffin-Embedded, or FFPE)   
+* Platform: Visium HD Spatial Gene Expression kit   
+* Sequencing: Illumina NovaSeq 6000, approximately 300 million reads   
+* Processing: Space Ranger was already run to process the raw data   
+
+The dataset is located in the `datasets/visiumhd_mouse_brain` directory within your project folder. If you need to download the dataset again, you can use the `datasets/download.R` script.
+
+## Dataset files
+
+The dataset includes several files and folders:
+
+* `web_summary.html`: Quality control (QC) report in HTML format
+* `metrics_summary.csv`: QC report in CSV format
+* `cloupe_008um.cloupe`: Loupe file for visualizing the data in the Loupe Browser
+* `molecule_info.h5`: H5 file with information about reads and molecules in the dataset
+* `feature_slice.h5`: H5 file for high-performance data access of 2 µm bins
+* `spatial`: Folder containing the tissue images
+* `binned_outputs` Folder containing results organized by different bin sizes
+   * `square_002um/`: Binned data with 2 µm resolution
+   * `square_008um/`: Binned data with 8 µm resolution
+   * `square_0016um/`: Binned data with 16 µm resolution
+
+The folder `binned_outputs` is relevant for our analysis. Space Ranger defaults to grouping the data into square bins of 2 µm, 8 µm, and 16 µm, though these bin sizes can be modified in the Space Ranger settings.
+
+## Focusing on `square_008um`
+
+Let us focus on the `square_008um/` folder, which contains the binned results at 8 µm resolution. This folder includes:
+
+* `analysis/`: Results from Space Ranger analysis
+* `cloupe.cloupe`: Loupe file for visualizing the 8 µm binned data in Loupe Browser
+* `raw_feature_bc_matrix/`: Raw counts for all bins (tissue or no tissue)
+* `raw_feature_bc_matrix.h5`: As above, organized in H5 format
+* `filtered_feature_bc_matrix/`: Counts for all bins located under tissue, per bin and gene
+* `filtered_feature_bc_matrix.h5`: As above, organized in H5 format
+* `spatial/`:  Folder with images and information about the spatial locations of the bins on the tissue
+
+The key files for our analysis are located in `filtered_feature_bc_matrix`. 
+
+## Counts data
+
+Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which includes three important files:
+
+* `barcodes.tsv.gz`: Contains the names (or identifiers) for each of the bins in the dataset
+* `features.tsv.gz` Contains essential information about the genes, including their Ensembl IDs, symbols and gene types
+* `matrix.mtx.gz` Contains the actual counts data
+   * The first row contains the total number of genes, bins and counts.
+   * All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
+   * Only non-zero counts are stored.
+
+```{r}
+#| label: dataset_1
+
+# barcodes.tsv.gz
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
+           header = FALSE, nrows = 5)
+
+# features.tsv.gz
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", 
+           header = FALSE, nrows = 5)
+
+# matrix.mtx.gz
+read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", 
+           skip = 2, nrows = 5, header = FALSE, sep = " ")
+```
+
+::: {.callout-tip}
+### Example
+This dataset has 19,059 genes, 98,917 bins and 68,259,814 counts.  
+Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
+:::
+
+# The Seurat object
+
+The R package [Seurat](https://satijalab.org/seurat/) is a widely used tool for single-cell and spatial transcriptomics analysis. It allows researchers to work with complex biological data and perform tasks like dimensionality reduction, clustering, and visualization. 
+
+Another popular option is the [scanpy](https://squidpy.readthedocs.io/en/stable/) package in Python. 
+
+## Importing the data into Seurat
+
+The first step in analyzing your data is to import it into Seurat. Here, we load data for both 8µm and 16µm bins into a Seurat object: 
+
+```{r}
+#| label: dataset_2
+
+sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size=c(8, 16), assay="RNA")
+sc$orig.ident = "brain"
+Idents(sc) = "brain"
+```
+
+Now, let us take a look at the Seurat object to understand its structure:
+
+```{r}
+#| label: dataset_3
+
+sc
+```
+
+::: {.callout-note}
+### Questions
+How many assays are in the dataset?  
+How many images are in the dataset?
+Why always two?
+:::
+
+## What is stored in the Seurat object?
+
+The Seurat object organizes data into different components. These components facilitate spatial transcriptomics analysis and are crucial for data interpretation. The key components include:
+
+- **Bins and genes**: These represent the spatial units (bins) and the genes that are being measured
+- **Assay data**: Contains the gene expression data, chromatin accessibility, surface proteins, etc.
+- **Metadata for bins**: Information about each bin (e.g., sample type, condition)
+- **Metadata for genes**: Includes gene IDs, names, types, and descriptions
+- **Dimensionality reductions**: Methods like PCA, UMAP, and tSNE that are used to reduce the complexity of the data
+- **Neighbors and graphs**: Information about the relatedness between bins
+- **Images**: Spatial coordinates and image data for visualizing the tissue
+
+## Bins and genes
+
+We can retrieve the total number of genes and bins stored in the Seurat object like this:
+
+```{r}
+#| label: dataset_4
+
+dim(sc)
+```
+
+We can also list the bins and genes contained in the Seurat object:
+
+```{r}
+#| label: dataset_5
+
+Cells(sc) %>% head(5)
+Features(sc) %>% head(5)
+```
+
+::: {.callout-tip}
+### Nomenclature
+Note that sometimes the term **bin** is also referred to as barcode, cell, nuclei.   
+The term **gene** is also referred to as feature, protein, peak.   
+We will stick to bins and genes for this workshop. 
+:::
+
+Furthermore, bins have a default identity which is used for plotting. It can be accessed with the `Idents` function:
+
+```{r}
+#| label: dataset_6
+
+Idents(sc) %>% head(5)
+```
+
+## Assay data
+
+Assays store the actual data, for example gene expression counts. We can list the available assays in the Seurat object:
+
+```{r}
+#| label: dataset_7
+
+Assays(sc)
+```
+
+To access a specific assay, we use the `GetAssay` function or the `[[]]` syntax:
+
+```{r}
+#| label: dataset_8
+
+GetAssay(sc, assay="RNA.008um")
+sc[["RNA.008um"]]
+```
+
+We can also check the number of genes and bins in a specific assay like this:
+
+```{r}
+#| label: dataset_9
+
+assay = GetAssay(sc, assay="RNA.008um")
+dim(assay)
+```
+
+::: {.callout-note}
+### Questions
+How many bins are in the assay?   
+How many genes are in the assay?
+:::
+
+The assay object stores data in different **layers**:  
+
+* `counts`: Raw counts for each gene in each bin  
+* `data`: Normalized counts for better comparability across bins  
+* `scale.data`: Scaled data for better comparability across genes  
+
+We use the `GetAssayData` function to access the actual data:  
+
+```{r}
+#| label: dataset_10
+#| message: true
+
+counts = GetAssayData(sc, assay="RNA.008um", layer="counts")
+counts[1:10, 1:10]
+```
+
+::: {.callout-note}
+### Questions
+What do you find special about this matrix?
+:::
+
+The Seurat object has a default/active assay that is used for most functions. To check the active assay, we can use:
+
+```{r}
+#| label: dataset_11
+
+DefaultAssay(sc)
+```
+
+To change the active assay to another one, for example `"RNA.016um"`, use:
+
+```{r}
+#| label: dataset_12
+
+DefaultAssay(sc) = "RNA.016um"
+DefaultAssay(sc)
+```
+
+For this workshop, we will focus on the assay `"RNA.008um"` for our analysis:
+
+```{r}
+#| label: dataset_13
+
+DefaultAssay(sc) = "RNA.008um"
+DefaultAssay(sc)
+```
+
+::: {.callout-tip}
+### Default assay
+Most Seurat functions will automatically use the default assay, but you can always specify a different assay with the `assay=` argument.
+:::
+
+## Bin metadata
+
+Bin metadata store additional information about each bin, such as the sample or condition. You can access this metadata using the `[[]]` syntax:
+
+```{r}
+#| label: dataset_14
+
+sc[[]] %>% head(5)
+```
+
+For example, the `orig.ident` column stores the original identity of the bin, and the `nCount_RNA.008um` and `nFeature_RNA.008um` columns store the number of counts and genes for the 8µm bins.
+
+You can access individual metadata columns like this:
+
+```{r}
+#| label: dataset_15
+
+sc$nCount_RNA.008um %>% head(3)
+```
+
+## Gene metadata
+
+Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object:
+
+```{r}
+#| label: dataset_16
+#| message: true
+
+assay <- GetAssay(sc, assay = "RNA.008um")
+assay[[]] %>% head(5)
+```
+
+In this example, no gene metadata is available for the assay. If available, you can access individual columns using the `$` syntax.
+
+## Dimensionality reductions
+
+Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing high-dimensional data in a lower-dimensional space. You can list available reductions with the `Reductions` function:
+
+```{r}
+#| label: dataset_17
+
+Reductions(sc)
+```
+
+Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `GetReduction` function or the `[[]]` syntax.
+
+## Neighbors and graphs
+
+To identify how the bins are related (e.g., for clustering), Seurat computes neighbors and graphs. You can list available neighbors and graphs using:
+
+```{r}
+#| label: dataset_18
+
+Neighbors(sc)
+Graphs(sc)
+```
+
+Currently, there are no computed neighbors or graphs. If available, you could access them with the `GetNeighbors` / `GetGraph` functions or the `[[]]` syntax.
+
+## Images
+
+For spatial data, images are stored in the Seurat object to visualize tissue sections and spatial coordinates. To list available images, use:
+
+```{r}
+#| label: dataset_19
+
+Images(sc)
+```
+
+Each assay and bin size should have a corresponding image. You can access a specific image using the `[[]]` syntax:
+
+```{r}
+#| label: dataset_20
+
+sc[["slice1.008um"]]
+```
+
+When we refer to the image in spatial transcriptomics, we usually mean the spatial coordinates associated with each bin. These coordinates tell us where each bin is located within the tissue section but not what the tissue looks like visually.
+
+However, Seurat also allows us to view the underlying histological image that was used to derive these spatial coordinates. This can help us visually inspect the tissue morphology in parallel with gene expression patterns.
+
+In this example, **Hematoxylin and eosin (H&E) staining** was used. H&E staining is a widely used technique in histology and pathology for visualizing the morphological features of tissues. Hematoxylin stains cell nuclei a blue to purple hue by binding to nucleic acids, highlighting areas rich in DNA and RNA. Eosin is an acidic dye that stains the cytoplasm and extracellular matrix in varying shades of pink to red, depending on the protein content and tissue composition. The contrast between the basophilic (blue-purple) and eosinophilic (pink-red) structures enables clear differentiation of cellular components and tissue architecture, aiding in diagnostic assessment and research.
+
+Here is how we can visualize the raw tissue image grid along with the spatial:
+
+```{r}
+#| label: dataset_21
+#| out-width: 4in
+#| out-height: 4in
+#| fig-align: center
+
+gridExtra::grid.arrange(GetImage(sc[["slice1.008um"]], method="grob"))
+```
+
+## Plotting
+
+Now that we have the data in Seurat, we can start visualizing gene expression using plots.
+
+### Violin plot for gene expression
+
+We can create a **violin plot** to show the expression of specific genes (e.g., "Nrgn", "Igf2", "Hap1") in the RNA.008um assay:
+
+```{r}
+#| label: dataset_22
+
+VlnPlot(sc, features = c("Nrgn", "Igf2", "Hap1"), layer="counts", pt.size = 0) + NoLegend()
+```
+
+Since the counts are raw and not normalized, interpreting them directly can be challenging.
+
+### Spatial plot for gene expression
+
+We can also visualize gene expression in a spatial context using a **spatial feature plot**:
+
+```{r}
+#| label: dataset_23
+
+SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
+```
+
+::: {.callout-tip}
+### Plot size and resolution matter
+You may observe visual artefacts in the image. This can occur when the image is plotted at a relatively low resolution (e.g., 150 dpi) and subsequently viewed on a high-resolution display. To address this issue, consider increasing the resolution using the Quarto `dpi` option. Alternatively, reducing the figure size may also help mitigate the problem.
+:::
+
+### Comparison Between 8µm and 16µm Bins
+
+Finally, we can plot the gene expression in the **RNA.016um assays**. This allows us to visualize how the data changes when comparing different bin sizes.
+
+```{r}
+#| label: dataset_24
+
+DefaultAssay(sc) <- "RNA.016um"
+p1 <- VlnPlot(sc, features = c("Nrgn"), layer="counts", pt.size = 0) + NoLegend()
+p2 <- SpatialFeaturePlot(sc, features = c("Nrgn"), slot = "counts")
+DefaultAssay(sc) <- "RNA.008um"
+p1 | p2
+```
+
+**Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**

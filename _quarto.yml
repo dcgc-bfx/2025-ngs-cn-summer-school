@@ -2,7 +2,8 @@ project:
   type: "default"
   execute-dir: "project"
   render:
-    - "workbooks/dataset_seurat.qmd"
+    - "workbooks/read_dataset_to_seurat.qmd"
+    - "workbooks/analyze_spatial_dataset.qmd"
 
 ####################
 # Execute defaults #
@@ -16,8 +17,8 @@ execute:
 #################
 knitr:
   opts_chunk:
-    timeit: true
-    dpi: 300
+    timeit: null
+    dpi: 400
     fig-width: 8
     fig-height: 5
     dev:
