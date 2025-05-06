@@ -3,7 +3,7 @@
 #SBATCH --signal=B:SIGUSR1@300
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=25
-#SBATCH --mem=85000
+#SBATCH --mem=92000
 #SBATCH --output=rstudio_summer_school_login.txt
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
