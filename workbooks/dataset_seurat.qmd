@@ -25,7 +25,6 @@ library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
-library(spacexr)    # Deconvolution 
 
 # Colours
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
@@ -36,7 +35,7 @@ cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05",
               "#a6a0f2", "#76facc", "#8491be", "#a32a2f", "#1c8859", "#2cc012", 
               "#35782b", "#9c6755", "#3b3960", "#eeb0a1", "#3e1e13", "#0064c3", 
               "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", 
-              "#000000", "#a4527c", "#041859")   
+              "#000000", "#a4527c", "#041859")
 
 # ggplot2 defaults
 options(ggplot2.discrete.colour=cal_pal50)
@@ -1184,61 +1183,128 @@ Comparison here - why similar? Motivate to try different values
 DefaultAssay(sc) = "RNA.008um"
 sc[["BANKSY.008um"]] = NULL
 sc[["banksy_pca.008um"]] = NULL
-
 gc()
 ```
 
-# Deconvolution
+# Cell type annotation by deconvolution
 
 - a
 - b
 
 ## What is deconvolution?
 
-!!! Copied from vignette
+Spatial transcriptomics methods like Visium HD can contain zero to multiple cells per spot (in our case bin) which might be fully or partially contained, depending on bin resolution, cell size and cell density. Thus we need to run dedicated deconvolution methods to estimate the cell type composition of each bin. In addition, these methods also should take into account the neighborhood of the bins.
 
-Seurat v5 also includes support for Robust Cell Type Decomposition, a computational approach to deconvolve spot-level data from spatial datasets, when provided with an scRNA-seq reference. RCTD has been shown to accurately annotate spatial data from a variety of technologies, including SLIDE-seq, Visium, and the 10x Xenium in-situ spatial platform. We observe good performance with Visium HD as well.
+One such method is Robust Cell Type Decomposition (RCTD) implemented in the (spacexr)[https://github.com/dmcable/spacexr] package which uses a single-cell reference to deconvolve bin into cells. RCTD learns cell type profiles from the single-cell reference, and uses these to label the spatial transcriptomics bins as cell types.
 
-To run RCTD, we first install the spacexr package from GitHub which implements RCTD. When running RCTD, we follow the instructions from the RCTD vignette.
+As reference, we will use the (Allen Brain atlas)[https://portal.brain-map.org/], specifically the single-cell transcriptome dataset reduced to 200,000 cells (and rare cell types removed). Additionally, for this tutorial, we will only annotate the cortex region of the Visium HD dataset.
 
-RCTD takes an scRNA-seq dataset as a reference, and a spatial dataset as a query. For a reference, we use a mouse scRNA-seq dataset from the Allen Brain Atlas, available for download here. The reference scRNAs-eq dataset has been reduced to 200,000 cells (and rare cell types <25 cells have been removed).
+## Subset the cortex
 
-We use the cortex Visium HD object as the spatial query. For computational efficiency, we sketch the spatial query dataset, apply RCTD to deconvolute the ‘sketched’ cortical cells and annotate them, and then project these annotations to the full cortical dataset.
+https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=0
 
+We read in the (image) coordinates of the cortex region from a CSV file and convert them into a segmentation object with `CreateSegmentation`. Next we use the `Overlay` function to identify all bins in our spatial dataset that fall into the cortex region as cortex "image": 
+
+```{r}
+cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
+cortex_coordinates = CreateSegmentation(cortex_coordinates)
+
+sc[["cortex"]] = Overlay(sc[["slice1.008um"]], cortex_coordinates)
+SpatialDimPlot(sc, images="cortex") + NoLegend() + scale_fill_manual(values=cal_pal50)
+```
+
+Finally, we create a Seurat object that only includes the cells that are in the cortex region.
+
+```{r}
+cortex_bins = Cells(sc[["cortex"]])
+cortex = subset(sc, cells=cortex_bins)
+cortex[["sketch"]] = NULL
+cortex[["pca.sketch"]] = NULL
+cortex[["umap.sketch"]] = NULL
+cortex[["pca.008um"]] = NULL
+cortex[["umap.008um"]] = NULL
+cortex[["banksy_umap.008um"]] = NULL
+cortex
+```
+
+The cortex object still contains ~200000 bins. For computational efficiency, we will sketch the cortex object to reduce the number of bins to 10,000 (FOR THIS TUROIAL) followed by data scaling and PCA dimensionality reduction.
+
+```{r}
+# Sketch
+cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+cortex = SketchData(
+  object = cortex,
+  ncells = 10000,
+  method = "LeverageScore",
+  sketched.assay = "sketch",
+  over.write = TRUE
+)
+# Scale data
+cortex = ScaleData(cortex, features=VariableFeatures(cortex))
+
+# PCA
+cortex = RunPCA(cortex, reduction.name="pca.sketch", features=VariableFeatures(cortex), npcs=50, nfeatures.print=5)
+```
+
+Finally, we need to convert the cortex Seurat object into a format that can be used the spacexr package. We provide the counts, the coordinates of the bins and the total counts per bin:
+
+```{r}
+# Counts
+counts = GetAssayData(cortex, assay="sketch", layer="counts")
+
+# Coordinates
+bins_sketch = Cells(cortex[["sketch"]])
+coords = GetTissueCoordinates(cortex)[bins_sketch, 1:2]
+
+# Total counts
+total_counts = colSums(counts)
+
+# Create spacexr SpatialRNA object
+query = spacexr::SpatialRNA(coords, counts, total_counts)
+gc()
+```
+
+## Get the reference
+
+The Allen Brain reference dataset has already been downloaded from (here)[https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0] and was saved asSeurat object (`datasets/allen_scRNAseq_ref.Rds`). We will load it:
 
 ```{r}
 ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
 
+The object contains the raw counts as well as precomputed cell annotations. For our analysis we are interested in cell type annotations which can be found in the column `subclass_label`:
+
 ```{r}
-ref[[]]
+ref[[]] %>% dplyr::select(subclass_label) %>% head()
 ```
 
+To use it as reference for deconvolution with RCTD, we need to convert the Seurat object to a spacexr `Reference` object:
+
 ```{r}
-
+# Counts
 counts = GetAssayData(ref, assay="RNA", layer="counts")
-cluster = as.factor(ref$subclass_label)
-levels(cluster) = gsub("/", "-", levels(cluster))
-cluster = droplevels(cluster)
-nUMI = ref$nCount_RNA
 
-ref = Reference(counts, cluster, nUMI, n_max_cells=1000) # set low for demo
+# Cell type labels
+cell_types = as.factor(ref$subclass_label)
+levels(cell_types) = gsub("/", "-", levels(cell_types))
+cell_types = droplevels(cell_types)
 
-rm(counts)
+# Total counts
+total_counts = ref$nCount_RNA
+
+# Create Reference object
+# Subsample to 100 cells per cell type as the recommended minimum 
+# (https://github.com/dmcable/spacexr/issues/171)
+ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=100)
 gc()
 ```
 
-```{r}
-
-counts = GetAssayData(sc, assay="sketch", layer="counts")
-bins_sketch = Cells(sc[["sketch"]])
-coords = GetTissueCoordinates(sc)[bins_sketch, 1:2]
-query = SpatialRNA(coords, counts, colSums(counts))
-```
+## Run deconvolution using RCTD
 
 ```{r}
-RCTD = create.RCTD(query, ref, max_cores = 25, fc_cutoff = 1, fc_cutoff_reg = 1) # set high for demo
+RCTD = create.RCTD(query, ref, max_cores = 25)
+gc()
 ```
 
 ```{r}
