@@ -1234,7 +1234,7 @@ The cortex object still contains ~200000 bins. For computational efficiency, we 
 cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
 cortex = SketchData(
   object = cortex,
-  ncells = 10000,
+  ncells = 50000,
   method = "LeverageScore",
   sketched.assay = "sketch",
   over.write = TRUE
@@ -1296,20 +1296,21 @@ total_counts = ref$nCount_RNA
 # Create Reference object
 # Subsample to 100 cells per cell type as the recommended minimum 
 # (https://github.com/dmcable/spacexr/issues/171)
-ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=100)
+ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=200)
 gc()
 ```
 
 ## Run deconvolution using RCTD
 
 ```{r}
-RCTD = create.RCTD(query, ref, max_cores = 25)
+RCTD = create.RCTD(query, ref, max_cores = 8)
 gc()
 ```
 
 ```{r}
-# Maybedo not run but precompute and let them load it?
-RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
+# RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
+#saveRDS(RCTD, file="datasets/RCTD.Rds")
+RCTD = readRDS("datasets/RCTD.Rds")
 ```
 
 
