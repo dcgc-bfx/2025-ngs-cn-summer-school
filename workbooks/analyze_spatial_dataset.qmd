@@ -48,19 +48,6 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
-
-# Hook to measure the computation time of a chunk
-# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
-knitr::knit_hooks$set(timeit = function(before, options, envir) {
-  if(before) {
-    ## code to be run before a chunk
-    tictoc::tic()
-  } else {
-    ## code to be run after a chunk
-    elapsed = tictoc::toc()$toc
-    print(paste0("Execution took ", elapsed, " seconds"))
-  }
-})
 ```
 
 # Loading the dataset
@@ -920,7 +907,7 @@ cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
 cortex_coordinates = CreateSegmentation(cortex_coordinates)
 
 sc[["cortex"]] = Overlay(sc[["slice1.008um"]], cortex_coordinates)
-SpatialDimPlot(sc, images="cortex") + NoLegend() + scale_fill_manual(values=cal_pal50)
+SpatialDimPlot(sc, images="cortex", cols=cal_pal50) + NoLegend() + scale_fill_manual(values=cal_pal50)
 ```
 
 Next, we create a Seurat object that only includes the bins that fall within the cortex region:
@@ -937,14 +924,14 @@ cortex[["banksy_umap.008um"]] = NULL
 cortex
 ```
 
-To make the analysis computationally manageable, we sketch the dataset down to 10,000 bins for this tutorial, then perform standard scaling and PCA:
+To make the analysis computationally manageable, we sketch the dataset down to 50,000 bins for this tutorial, then perform standard scaling and PCA:
 
 ```{r}
 # Sketch
 cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
 cortex = SketchData(
   object = cortex,
-  ncells = 10000,
+  ncells = 50000,
   method = "LeverageScore",
   sketched.assay = "sketch",
   over.write = TRUE
@@ -971,7 +958,6 @@ total_counts = colSums(counts)
 
 # Create spacexr SpatialRNA object
 query = spacexr::SpatialRNA(coords, counts, total_counts)
-gc()
 ```
 
 ## Load and prepare the reference dataset
@@ -1006,22 +992,65 @@ total_counts = ref$nCount_RNA
 # Create Reference object
 # Subsample to 100 cells per cell type as the recommended minimum 
 # (https://github.com/dmcable/spacexr/issues/171)
-ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=100)
+ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=500)
+
+# Remove since not needed
+rm(coords, counts, cortex_coordinates)
 gc()
 ```
 
-## Run deconvolution using RCTD
+## Run RCTD
+
+Now we could run RCTD. MENTION DOUBLET MODE. However, it would take too long for this tutorial. Therefore, we have already run this analysis for you and saved the results in the file `datasets/RCTD.Rds`. All you need to do today is to load it. 
 
 We now run the RCTD algorithm. This may take some time depending on the number of bins and used cores.
 
 ```{r}
-RCTD = create.RCTD(query, ref, max_cores = 25)
-gc()
+# This will take five hours
+#
+#RCTD = create.RCTD(query, ref, max_cores=12)
+#RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
+#saveRDS(RCTD, "datasets/RCTD.Rds")
+#gc()
+
+RCTD = readRDS("datasets/RCTD.Rds")
+RCTD@results$results_df %>% head()
 ```
 
+The RCTD object contains the results of the deconvolution analysis. The results are stored in the `results_df` slot, which contains the estimated cell type proportions for each bin in the query dataset. 
+
+
 ```{r}
-# Maybe do not run but precompute and let them load it?
-RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
+cortex = AddMetaData(cortex, metadata = RCTD@results$results_df)
+```
+
+## Project results back
+
+We will project
+
+```{r}
+cortex$first_type = as.character(cortex$first_type)
+cortex$first_type[is.na(cortex$first_type)] = "Unknown"
+
+cortex <- ProjectData(
+  object = cortex,
+  assay = "RNA.008um",
+  full.reduction = "pca.cortex",
+  sketched.assay = "sketch",
+  sketched.reduction = "pca.cortex.sketch",
+  umap.model = "umap.cortex.sketch",
+  dims = 1:50,
+  refdata = list(full_first_type = "first_type")
+)
+
+cortex = ProjectData(cortex,
+                 sketched.assay="sketch", assay="RNA.008um", 
+                 sketched.reduction="pca.sketch", full.reduction="pca.008um", 
+                 refdata=list(first_type.008um="first_type"),
+                 dims=1:30)
+
+sc[[]][, "first_type.008um"] <- "Unknown"
+sc$first_type.008um[Cells(cortex)] <- cortex$first_type.008um[Cells(cortex)]
 ```
 
 # Other useful resources

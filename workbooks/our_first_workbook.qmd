@@ -1,0 +1,50 @@
+---
+title: "Our first workbook"
+---
+
+# Quarto
+
+**Quarto** enables you to weave together content and executable code into a finished document. To learn more about *Quarto* see <https://quarto.org>.
+
+## Run code in chunks
+
+Chunks are the building blocks of a Quarto document. A chunk is a section of code that can be executed and its output included in the final document. Chunks are defined by three backticks followed by `{r}`, then the code, and finally three backticks again. For example:
+
+```{r}
+1 + 1
+```
+
+Run this chunk by clicking on the play symbol (top-right button) of the chunk. You can also run all chunks above this chunk clicking on the button next to the play symbol. Let us run this chunk.
+
+The output is shown below and can be anything: text, numbers, plots, ... . For example, run this chunk:
+
+```{r}
+plot(cars)
+```
+
+You can tune the behavior of the chunk by adding options. For example, you can add `#| echo: false` to hide the code in the output:
+
+```{r}
+#| echo: false
+
+2 * 2
+```
+
+The most basic options can be set using the gear-shaped symbol in the top-right corner of the chunk. Other options can be found in the [knitr documentation](https://yihui.org/knitr/) or in the [quarto documentation](https://quarto.org/docs/guide/).
+
+
+## Format your document content
+
+Quarto documents are written in Markdown, a lightweight markup language that allows you to format text easily. You can create headings, lists, links, and more using simple syntax. For example, in this document:
+
+- we use `#` for the title and `##` for the section titles
+- we use `**` to print the word Quarto in **bold** and `*` to print it in *italic*
+- we highlight words with single backticks `like this`
+- we create links using the syntax `[link text](URL)`
+- we use `-` to create a bullet list
+
+A detail documentation of the Markdown syntax can be found in the [quarto documentation](https://quarto.org/docs/guide/).
+
+## Create a final document
+
+When you click the **Render** button at the top of the quarto file, a document will be generated that includes both content and the output of embedded code.

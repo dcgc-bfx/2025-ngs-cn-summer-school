@@ -29,6 +29,9 @@ untar(tarfile = "datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
 unlink("datasets/visiumhd_mouse_brain/binned_outputs.tar.gz")
 file.rename(from = "binned_outputs", to = "datasets/visiumhd_mouse_brain/binned_outputs")
 
+# Cortex coordinates
+curl::curl_download(url = "https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=1",
+                    destfile = "datasets/cortex_coordinates.csv")
 
 # Allen Brain Atlas from Seurat Visium HD vignette. Seurat object. Reduced to 200,000 cells (and rare cell types <25 cells have been removed).
 curl::curl_download(url = "https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=1",
