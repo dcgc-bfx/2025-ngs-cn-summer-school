@@ -450,3 +450,5 @@ p1 | p2
 ```
 
 **Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**
+
+**To free the occupied memory, please restart the R session in RStudio via Session->Restart R.**
