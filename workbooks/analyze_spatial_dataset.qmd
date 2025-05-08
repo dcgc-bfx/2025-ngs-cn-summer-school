@@ -417,7 +417,7 @@ VizDimLoadings(sc, reduction="pca.sketch", dims=1:4, nfeatures=10, balanced=TRUE
 
 ::: {.callout-tip}
 ## Learnings
-Helpful YouTube video on PCA in the context of gene expression analysis is (here)[https://www.youtube.com/watch?v=FgakZw6K1QQ]
+Helpful YouTube video on PCA in the context of gene expression analysis is [here](https://www.youtube.com/watch?v=FgakZw6K1QQ)
 :::
 
 ::: {.callout-note}
@@ -566,8 +566,8 @@ SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.high
   * Test different resolution values to find the best clustering solution for your data  
 * UMAP  
   * UMAP "cloud" sizes and the distance between them may not be meaningful since the method has a local notion of distance
-  * Helpful explanation on YouTube (here)[https://www.youtube.com/watch?v=eN0wFzBA4Sc]
-  * Helpful documentation and option to explore (here)[https://pair-code.github.io/understanding-umap/]  
+  * Helpful explanation on YouTube [here](https://www.youtube.com/watch?v=eN0wFzBA4Sc)
+  * Helpful documentation and option to explore [here](https://pair-code.github.io/understanding-umap/)  
 * Keep in mind that this represents only a portion of the entire dataset, and the full dataset may reveal additional insights
 * Take your time. In scRNA-seq analysis, this is perhaps the most time-consuming step of the basic analysis
 :::
