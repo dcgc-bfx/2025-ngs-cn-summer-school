@@ -556,7 +556,8 @@ We can highlight specific clusters by using the `CellsByIdentities` function to 
 cluster_bins = CellsByIdentities(sc, idents=c(16, 8))
 cluster_bins[["NA"]] = NULL
 
-SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+p = SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+p
 ```
 
 ::: {.callout-tip}
@@ -794,10 +795,10 @@ Next, we apply PCA, clustering, and UMAP using the BANKSY assay. We use the firs
 ```{r}
 #| label: spatial_3
 
-sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=15, nfeatures.print=5)
-sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:15)
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=30, nfeatures.print=5)
+sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:30)
 sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
-sc = RunUMAP(sc, reduction="banksy_pca.008um", reduction.name="banksy_umap.008um", dims=1:15, return.model=TRUE)
+sc = RunUMAP(sc, reduction="banksy_pca.008um", reduction.name="banksy_umap.008um", dims=1:30, return.model=TRUE)
 
 sc$banksy_clusters.008um = sc$seurat_clusters
 DefaultAssay(sc) = "RNA.008um"
@@ -857,8 +858,8 @@ As before, we perform PCA, clustering, and UMAP on the BANKSY assay. We use the 
 ```{r}
 #| label: spatial_7
 
-sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=10, nfeatures.print=5)
-sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:10)
+sc = RunPCA(sc, reduction.name="banksy_pca.008um", features=rownames(sc[["BANKSY.008um"]]), npcs=30, nfeatures.print=5)
+sc = FindNeighbors(sc, reduction="banksy_pca.008um", dims=1:30)
 sc = FindClusters(sc, resolution=0.5, algorithm="leiden")
 sc$banksy_domains.008um = sc$seurat_clusters
 ```
@@ -907,6 +908,7 @@ cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
 cortex_coordinates = CreateSegmentation(cortex_coordinates)
 
 sc[["cortex"]] = Overlay(sc[["slice1.008um"]], cortex_coordinates)
+DefaultAssay(sc[["cortex"]]) = ""
 SpatialDimPlot(sc, images="cortex", cols=cal_pal50) + NoLegend() + scale_fill_manual(values=cal_pal50)
 ```
 
@@ -924,7 +926,7 @@ cortex[["banksy_umap.008um"]] = NULL
 cortex
 ```
 
-To make the analysis computationally manageable, we sketch the dataset down to 50,000 bins for this tutorial, then perform standard scaling and PCA:
+To make the analysis computationally manageable, we sketch the dataset down to 50,000 bins for this tutorial, then perform feature selection, data scaling and PCA:
 
 ```{r}
 # Sketch
@@ -936,6 +938,9 @@ cortex = SketchData(
   sketched.assay = "sketch",
   over.write = TRUE
 )
+# Feature selection
+cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+
 # Scale data
 cortex = ScaleData(cortex, features=VariableFeatures(cortex))
 
@@ -990,8 +995,6 @@ cell_types = droplevels(cell_types)
 total_counts = ref$nCount_RNA
 
 # Create Reference object
-# Subsample to 100 cells per cell type as the recommended minimum 
-# (https://github.com/dmcable/spacexr/issues/171)
 ref = spacexr::Reference(counts, cell_types, total_counts, n_max_cells=500)
 
 # Remove since not needed
@@ -1001,7 +1004,7 @@ gc()
 
 ## Run RCTD
 
-Now we could run RCTD. MENTION DOUBLET MODE. However, it would take too long for this tutorial. Therefore, we have already run this analysis for you and saved the results in the file `datasets/RCTD.Rds`. All you need to do today is to load it. 
+Now we could run RCTD. However, it would take too long for this tutorial. Therefore, we have already run this analysis for you and saved the results in the file `datasets/RCTD.Rds`. All you need to do today is to load it: 
 
 We now run the RCTD algorithm. This may take some time depending on the number of bins and used cores.
 
@@ -1014,43 +1017,133 @@ We now run the RCTD algorithm. This may take some time depending on the number o
 #gc()
 
 RCTD = readRDS("datasets/RCTD.Rds")
-RCTD@results$results_df %>% head()
+RCTD_results = RCTD@results$results_df
+head(RCTD_results)
 ```
 
-The RCTD object contains the results of the deconvolution analysis. The results are stored in the `results_df` slot, which contains the estimated cell type proportions for each bin in the query dataset. 
+The RCTD object contains the results of the deconvolution analysis. The results are stored in the `results_df` slot. Here are explanations of the most important columns:
 
+- `spot_class`: indicates whether this bin is a "singlet" (one cell), "doublet_certain" (two cells), "doublet_uncertain" (two cells but uncertain), "reject" (cannot say)
+- `first_type`: gives the prediction for the first cell type
+- `second_type`: only if the bin is a doublet (!), gives the prediction for the second cell type
+
+For all other columns, we refer to the RCTD documentation. We will add the three columns to the bin metadata of the cortex object:
 
 ```{r}
-cortex = AddMetaData(cortex, metadata = RCTD@results$results_df)
+# Add to cortex object
+RCTD_results = RCTD_results[, c("spot_class", "first_type", "scond_type")]
+colnames(RCTD_results) = c("doublet", "first_cell_type", "second_cell_type")
+cortex = AddMetaData(cortex, metadata=RCTD_results)
+
+# Replace NA (not available) with "unknown"
+cortex$doublet = as.character(cortex$doublet)
+cortex$doublet[is.na(cortex$doublet)] = "unknown"
+cortex$doublet = factor(cortex$doublet)
+
+cortex$first_cell_type = as.character(cortex$first_cell_type)
+cortex$first_cell_type[is.na(cortex$first_cell_type)] = "Unknown"
+cortex$first_cell_type = factor(cortex$first_cell_type)
+
+cortex$second_cell_type = as.character(cortex$second_cell_type)
+cortex$second_cell_type[is.na(cortex$second_cell_type)] = "Unknown"
+cortex$second_cell_type = factor(cortex$second_cell_type)
 ```
 
-## Project results back
+## Project back and transfer results
 
-We will project
+Now we need to project the RCTD results of the cortex sketch dataset back to the cortex full dataset. This is similar to the projection of the clustering and UMAP results we did before. 
 
 ```{r}
-cortex$first_type = as.character(cortex$first_type)
-cortex$first_type[is.na(cortex$first_type)] = "Unknown"
-
-cortex <- ProjectData(
-  object = cortex,
-  assay = "RNA.008um",
-  full.reduction = "pca.cortex",
-  sketched.assay = "sketch",
-  sketched.reduction = "pca.cortex.sketch",
-  umap.model = "umap.cortex.sketch",
-  dims = 1:50,
-  refdata = list(full_first_type = "first_type")
-)
+DefaultAssay(cortex) = "RNA.008um"
 
 cortex = ProjectData(cortex,
                  sketched.assay="sketch", assay="RNA.008um", 
                  sketched.reduction="pca.sketch", full.reduction="pca.008um", 
-                 refdata=list(first_type.008um="first_type"),
+                 refdata=list(doublet.008um="doublet",
+                              first_cell_type.008um="first_cell_type",
+                              second_cell_type.008um="second_cell_type"),
                  dims=1:30)
+```
 
-sc[[]][, "first_type.008um"] <- "Unknown"
-sc$first_type.008um[Cells(cortex)] <- cortex$first_type.008um[Cells(cortex)]
+Ultimately, we would like to include the cell type predictions in our original brain dataset. We add them to the bin metadata:
+
+```{r}
+# We will the columns with "unknown" and then set the values for all cells of the cortex
+cortex_bins = rownames(cortex[[]])
+sc$doublet.008um = "unknown"
+sc$doublet.008um[cortex_bins] = cortex$doublet.008um[cortex_bins]
+sc$doublet.008um = factor(sc$doublet.008um)
+
+sc$first_cell_type.008um = "Unknown"
+sc$first_cell_type.008um[cortex_bins] = cortex$first_cell_type.008um[cortex_bins]
+sc$first_cell_type.008um = factor(sc$first_cell_type.008um)
+
+sc$second_cell_type.008um = "Unknown"
+sc$second_cell_type.008um[cortex_bins] = cortex$second_cell_type.008um[cortex_bins]
+sc$second_cell_type.008um = factor(sc$second_cell_type.008um)
+```
+
+## Visualize the results
+
+First, we can plot different cell types. For example, here we show three different layers of excitatory neurons (L2-3 IT CTX, L4-5 IT CTX, L5 IT CTX):
+
+```{r}
+Idents(sc) = "first_cell_type.008um"
+
+layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX")
+layered_excitatory_bins = CellsByIdentities(sc, idents=layered_excitatory_neurons)
+layered_excitatory_bins[["NA"]] = NULL
+
+p = SpatialDimPlot(sc, cells.highlight=layered_excitatory_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+p
+```
+
+## Annotate seurat_clusters, BANKSY clusters, BANKSY domains
+
+With this cell type information, we can annotate the clusters of our basic workflow and of BANKSY. It also helps us to identify which clusters need to be merged and which to be split. **However**: Remember that in this tutorial we did cell type predictions only for defined subset. Hence results might only be meaningfull for a subset of clusters.
+
+Here are the predicted cell types for the clusters of our basic workflow:
+
+```{r}
+cell_type_seurat_cluster_counts = sc[[]] %>% 
+         dplyr::count(first_cell_type.008um, seurat_clusters.008um)
+
+ggplot(cell_type_seurat_cluster_counts,
+       aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
+  geom_bar(stat = "identity", position = "fill")
+```
+
+```{r}
+cell_type_banksy_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um != "Unknown") %>%
+         dplyr::count(first_cell_type.008um, banksy_clusters.008um)
+
+ggplot(cell_type_banksy_cluster_counts,
+       aes(x=banksy_clusters.008um, y=n, fill=first_cell_type.008um)) +
+  geom_bar(stat = "identity", position = "fill")
+```
+
+
+With this cell type information, we can annotate the spatial domains we identified with BANKSY. Here, we will see whether we can identify all domains that are associated with excitatory neuron layers annotated in the Allen Brain Atlas:
+
+```{r}
+layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX", "L5 PT CTX", "L5-6 NP CTX", "L6 CT CTX", "L6 IT CTX", "L6b CTX")
+
+# First we count the number of bins predicted to contain excitatory neurons per BANKSY domain:
+cell_type_banksy_domain_counts = sc[[]] %>%
+  dplyr::filter(first_cell_type.008um %in% layered_excitatory_neurons) %>%
+  dplyr::count(first_cell_type.008um, banksy_domains.008um)
+
+# Then we use ggplot
+p = ggplot(cell_type_banksy_domain_counts,
+       aes(x=banksy_domains.008um, y=n, fill=first_cell_type.008um)) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+                position = position_stack(vjust = 0.5), size = 3) +
+  ylab("# of bins") +
+  ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
+  theme_minimal()
+print(p)
 ```
 
 # Other useful resources
