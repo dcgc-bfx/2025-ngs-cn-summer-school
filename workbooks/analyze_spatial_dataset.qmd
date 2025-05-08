@@ -13,7 +13,7 @@ Feel free to use your personal workbook to make notes, track your progress, and 
 
 ---
 
-In this **second part**, we will cover key steps in the analysis workflow, including quality control, preprocessing, clustering and visualisation, cluster annotation, spatial clustering, and integration with single-cell transcriptomics data.
+In this **second part**, we will cover key steps in the analysis workflow, including quality control, preprocessing, clustering and visualization, cluster annotation, spatial clustering, and integration with single-cell transcriptomics data.
 
 ## Setting up your R environment 
 
@@ -28,9 +28,9 @@ library(SeuratWrappers) # Add-ons for Seurat
 library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 library(grid)       # For other plots
-library(viridis)    # Our continuous colour palette
+library(viridis)    # Our continuous color palette
 
-# Colours
+# Colors
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
               "#fedf25", "#d2b48c", "#bb55e1", "#6ec5ab", "#5d57af", "#143341", 
               "#761445", "#d65b5a", "#94043a", "#e7a6cd", "#204519", "#87afd1", 
@@ -427,7 +427,7 @@ How many PCs would you choose for further analysis?
 
 # Clustering and visualization
 
-In the following, we **cluster** spatial bins based on their gene expression profiles and use **UMAP** (Uniform Manifold Approximation and Projection) to visualise the results in two dimensions.
+In the following, we **cluster** spatial bins based on their gene expression profiles and use **UMAP** (Uniform Manifold Approximation and Projection) to visualize the results in two dimensions.
 
 **Clustering** is typically done using unsupervised algorithms (e.g., Louvain or Leiden) that group bins based on similarities across the full gene expression space. This helps to identify regions within the tissue that share similar transcriptional signatures, which may correspond to distinct anatomical structures or functional states. 
 
@@ -521,7 +521,7 @@ sc = ProjectData(sc,
                  refdata=list(seurat_clusters.008um="seurat_clusters.sketch"),
                  dims=1:30)
 
-# Fix the category levels for bin metadata column seurat_clusters.008um and update the bin identities
+# Fix the category levels for bin metadata column Seurat_clusters.008um and update the bin identities
 sc$seurat_clusters.008um = factor(sc$seurat_clusters.008um, levels=levels(sc$seurat_clusters.sketch))
 Idents(sc) = "seurat_clusters.008um"
 
@@ -556,8 +556,7 @@ We can highlight specific clusters by using the `CellsByIdentities` function to 
 cluster_bins = CellsByIdentities(sc, idents=c(16, 8))
 cluster_bins[["NA"]] = NULL
 
-p = SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
-p
+SpatialDimPlot(sc, cells.highlight=cluster_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
 ::: {.callout-tip}
@@ -566,7 +565,7 @@ p
 * Clustering  
   * Test different resolution values to find the best clustering solution for your data  
 * UMAP  
-  * UMAP "cloud" sizes and the distance between them may not be meaningful ast the method has a local notion of distance
+  * UMAP "cloud" sizes and the distance between them may not be meaningful since the method has a local notion of distance
   * Helpful explanation on YouTube (here)[https://www.youtube.com/watch?v=eN0wFzBA4Sc]
   * Helpful documentation and option to explore (here)[https://pair-code.github.io/understanding-umap/]  
 * Keep in mind that this represents only a portion of the entire dataset, and the full dataset may reveal additional insights
@@ -597,7 +596,7 @@ A good clustering of cells typically results in good marker genes. Hence, if you
 
 Resulting *p*-values are adjusted using the Bonferroni method. However, beware that *p*-values are likely inflated, since both clusters and marker genes were determined based on the same gene expression data, and there ought to be gene expression differences by design. Nevertheless, *p*-values can be used to sort and prioritize marker genes. 
 
-You can use Seurats `FindMarkers` function to identify differentially expressed genes between clusters:
+You can use Seurat `FindMarkers` function to identify differentially expressed genes between clusters:
 
 ```{r}
 #| label: clusterannot_1
@@ -782,7 +781,7 @@ gc()
 
 At this point, we have created a new assay `BANKSY.008um`, containing the BANKSY-transformed data, and have set it as the default.
 
-**⚠️ Important**: BANKSY fills the `scale.data` layer. Therefore do not call `ScaleData` on the BANKSY assay as this negates the effects of lamda. 
+**⚠️ Important**: BANKSY fills the `scale.data` layer. Therefore do not call `ScaleData` on the BANKSY assay as this negates the effects of lambda. 
 
 ```{r}
 #| label: spatial_2
@@ -904,6 +903,8 @@ For this tutorial, we use a preprocessed reference derived from the [Allen Brain
 We first extract the cortex region using [pre-defined coordinates](https://www.dropbox.com/scl/fi/qbs3j1alq33f0qz892ub3/cortex-hippocampus_coordinates.csv?rlkey=lsxglb15jhjdrircy9lb6n0rd&dl=0) from a CSV file and convert them into a segmentation object with `CreateSegmentation`. Next we use the `Overlay` function to identify all bins in our spatial dataset that fall into the cortex region: 
 
 ```{r}
+#| label: annot_1
+
 cortex_coordinates = read.csv("datasets/cortex_coordinates.csv")
 cortex_coordinates = CreateSegmentation(cortex_coordinates)
 
@@ -915,6 +916,8 @@ SpatialDimPlot(sc, images="cortex", cols=cal_pal50) + NoLegend() + scale_fill_ma
 Next, we create a Seurat object that only includes the bins that fall within the cortex region:
 
 ```{r}
+#| label: annot_2
+
 cortex_bins = Cells(sc[["cortex"]])
 cortex = subset(sc, cells=cortex_bins)
 cortex[["sketch"]] = NULL
@@ -929,6 +932,8 @@ cortex
 To make the analysis computationally manageable, we sketch the dataset down to 50,000 bins for this tutorial, then perform feature selection, data scaling and PCA:
 
 ```{r}
+#| label: annot_3
+
 # Sketch
 cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
 cortex = SketchData(
@@ -951,6 +956,8 @@ cortex = RunPCA(cortex, reduction.name="pca.sketch", features=VariableFeatures(c
 We now prepare the `SpatialRNA` object required by `spacexr`:
 
 ```{r}
+#| label: annot_4
+
 # Counts
 counts = GetAssayData(cortex, assay="sketch", layer="counts")
 
@@ -967,9 +974,11 @@ query = spacexr::SpatialRNA(coords, counts, total_counts)
 
 ## Load and prepare the reference dataset
 
-We now load the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
+We begin by loading the [Allen Brain single-cell reference dataset](https://www.dropbox.com/scl/fi/r1mixf4eof2cot891n215/allen_scRNAseq_ref.Rds?rlkey=ynr6s6wu1efqsjsu3h40vitt7&dl=0), which has been saved as a Seurat object:
 
 ```{r}
+#| label: annot_5
+
 ref = readRDS("datasets/allen_scRNAseq_ref.Rds")
 ref
 ```
@@ -977,12 +986,16 @@ ref
 We use the `subclass_label` column for cell type annotations:
 
 ```{r}
+#| label: annot_6
+
 ref[[]] %>% dplyr::select(subclass_label) %>% head()
 ```
 
 We convert this Seurat object into a `spacexr` Reference object:
 
 ```{r}
+#| label: annot_7
+
 # Counts
 counts = GetAssayData(ref, assay="RNA", layer="counts")
 
@@ -1004,32 +1017,39 @@ gc()
 
 ## Run RCTD
 
-Now we could run RCTD. However, it would take too long for this tutorial. Therefore, we have already run this analysis for you and saved the results in the file `datasets/RCTD.Rds`. All you need to do today is to load it: 
-
-We now run the RCTD algorithm. This may take some time depending on the number of bins and used cores.
+We are now ready to run RCTD. However, since this step is time-consuming, we provide the results precomputed and saved in the file `datasets/RCTD.Rds`. For completeness, here is how you would normally run the algorithm:
 
 ```{r}
+#| label: annot_8
+
 # This will take five hours
 #
 #RCTD = create.RCTD(query, ref, max_cores=12)
 #RCTD = run.RCTD(RCTD, doublet_mode = "doublet")
 #saveRDS(RCTD, "datasets/RCTD.Rds")
 #gc()
+```
+
+We simply load the results:
+
+```{r}
+#| label: annot_9
 
 RCTD = readRDS("datasets/RCTD.Rds")
 RCTD_results = RCTD@results$results_df
 head(RCTD_results)
 ```
 
-The RCTD object contains the results of the deconvolution analysis. The results are stored in the `results_df` slot. Here are explanations of the most important columns:
+The `results_df` contains the main output of the deconvolution. Key columns include:  
+* `spot_class`: classification of each bin ("singlet", "doublet_certain", "doublet_uncertain", "reject")  
+* `first_type`: predicted identity of the first cell type  
+* `second_type`: only populated for doublets
 
-- `spot_class`: indicates whether this bin is a "singlet" (one cell), "doublet_certain" (two cells), "doublet_uncertain" (two cells but uncertain), "reject" (cannot say)
-- `first_type`: gives the prediction for the first cell type
-- `second_type`: only if the bin is a doublet (!), gives the prediction for the second cell type
-
-For all other columns, we refer to the RCTD documentation. We will add the three columns to the bin metadata of the cortex object:
+We now add these predictions to the bin metadata of the cortex object:
 
 ```{r}
+#| label: annot_10
+
 # Add to cortex object
 RCTD_results = RCTD_results[, c("spot_class", "first_type", "scond_type")]
 colnames(RCTD_results) = c("doublet", "first_cell_type", "second_cell_type")
@@ -1051,9 +1071,11 @@ cortex$second_cell_type = factor(cortex$second_cell_type)
 
 ## Project back and transfer results
 
-Now we need to project the RCTD results of the cortex sketch dataset back to the cortex full dataset. This is similar to the projection of the clustering and UMAP results we did before. 
+We now project the RCTD results from the cortex sketch dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
 
 ```{r}
+#| label: annot_11
+
 DefaultAssay(cortex) = "RNA.008um"
 
 cortex = ProjectData(cortex,
@@ -1065,9 +1087,11 @@ cortex = ProjectData(cortex,
                  dims=1:30)
 ```
 
-Ultimately, we would like to include the cell type predictions in our original brain dataset. We add them to the bin metadata:
+Next, we include the projected predictions in the original brain dataset (`sc`):
 
 ```{r}
+#| label: annot_12
+
 # We will the columns with "unknown" and then set the values for all cells of the cortex
 cortex_bins = rownames(cortex[[]])
 sc$doublet.008um = "unknown"
@@ -1085,26 +1109,29 @@ sc$second_cell_type.008um = factor(sc$second_cell_type.008um)
 
 ## Visualize the results
 
-First, we can plot different cell types. For example, here we show three different layers of excitatory neurons (L2-3 IT CTX, L4-5 IT CTX, L5 IT CTX):
+We can now visualize cell type predictions. For example, here we highlight three predicted excitatory neuron layers:
 
 ```{r}
+#| label: annot_13
+
 Idents(sc) = "first_cell_type.008um"
 
 layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX")
 layered_excitatory_bins = CellsByIdentities(sc, idents=layered_excitatory_neurons)
 layered_excitatory_bins[["NA"]] = NULL
 
-p = SpatialDimPlot(sc, cells.highlight=layered_excitatory_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
-p
+SpatialDimPlot(sc, cells.highlight=layered_excitatory_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
-## Annotate seurat_clusters, BANKSY clusters, BANKSY domains
+## Annotate `seurat_clusters`, BANKSY clusters, BANKSY domains
 
-With this cell type information, we can annotate the clusters of our basic workflow and of BANKSY. It also helps us to identify which clusters need to be merged and which to be split. **However**: Remember that in this tutorial we did cell type predictions only for defined subset. Hence results might only be meaningfull for a subset of clusters.
+Using the predicted cell types, we can now annotate our clusters and domains. Keep in mind that predictions were only generated for a subset of the dataset, so results may not apply to all clusters.
 
-Here are the predicted cell types for the clusters of our basic workflow:
+Seurat clusters: 
 
 ```{r}
+#| label: annot_14
+
 cell_type_seurat_cluster_counts = sc[[]] %>% 
          dplyr::count(first_cell_type.008um, seurat_clusters.008um)
 
@@ -1113,7 +1140,11 @@ ggplot(cell_type_seurat_cluster_counts,
   geom_bar(stat = "identity", position = "fill")
 ```
 
+BANKSY clusters: 
+
 ```{r}
+#| label: annot_15
+
 cell_type_banksy_cluster_counts = sc[[]] %>% 
          dplyr::filter(first_cell_type.008um != "Unknown") %>%
          dplyr::count(first_cell_type.008um, banksy_clusters.008um)
@@ -1123,10 +1154,13 @@ ggplot(cell_type_banksy_cluster_counts,
   geom_bar(stat = "identity", position = "fill")
 ```
 
+BANKSY domains:
 
-With this cell type information, we can annotate the spatial domains we identified with BANKSY. Here, we will see whether we can identify all domains that are associated with excitatory neuron layers annotated in the Allen Brain Atlas:
+We now evaluate the spatial domains in terms of excitatory neuron layer annotations from the Allen Brain Atlas.
 
 ```{r}
+#| label: annot_16
+
 layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX", "L5 PT CTX", "L5-6 NP CTX", "L6 CT CTX", "L6 IT CTX", "L6b CTX")
 
 # First we count the number of bins predicted to contain excitatory neurons per BANKSY domain:
@@ -1135,7 +1169,7 @@ cell_type_banksy_domain_counts = sc[[]] %>%
   dplyr::count(first_cell_type.008um, banksy_domains.008um)
 
 # Then we use ggplot
-p = ggplot(cell_type_banksy_domain_counts,
+ggplot(cell_type_banksy_domain_counts,
        aes(x=banksy_domains.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "stack") +
   geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
@@ -1143,7 +1177,6 @@ p = ggplot(cell_type_banksy_domain_counts,
   ylab("# of bins") +
   ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
   theme_minimal()
-print(p)
 ```
 
 # Other useful resources
