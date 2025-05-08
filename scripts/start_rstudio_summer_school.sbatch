@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --time=96:00:00
+#SBATCH --time=24:00:00
 #SBATCH --signal=B:SIGUSR1@300
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=30
@@ -8,7 +8,7 @@
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
 #SBATCH --partition=ngs.q
-#SBATCH --nodelist=compute-2-3            
+#SBATCH --nodelist=compute-2-2
 
 # Note for IT:        
 # Take this script and adapt it for all users (line 9-11)
@@ -31,7 +31,7 @@ USER=$(whoami)
 PASSWORD=$(openssl rand -base64 8)
 
 # Set a port between 9000 and 9025
-PORT=9001
+PORT=9002
 
 # Set path/url to Singularity image
 SINGULARITY_IMAGE=oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:Unstable
