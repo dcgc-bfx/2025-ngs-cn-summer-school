@@ -5,7 +5,7 @@
 .Rproj
 .Rproj.user
 .DS_Store
-2025-ngs-cn-summer-school.Rproj
+!2025-ngs-cn-summer-school.Rproj
 /.quarto/
 /workbooks/cache/
 /workbooks/*_files/
