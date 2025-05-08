@@ -14,3 +14,10 @@
 /scripts/rstudio_summer_school_errors.txt
 /scripts/rstudio_summer_school_login.txt
 /datasets/visiumhd_mouse_brain/
+/datasets/RCTD.Rds
+/datasets/allen_scRNAseq_ref.Rds
+/datasets/cortex_coordinates.csv
+rstudio_summer_school_errors.txt
+rstudio_summer_school_login.txt
+
+
