@@ -44,7 +44,10 @@ If you used our workbooks to analyze your data, please cite it by mentioning the
 On a linux laptop, you can get started right away using our containerized environment:
 
 ```bash
-# Download the container image
+# Clone the repository
+git clone git@github.com:dcgc-bfx/2025-ngs-cn-summer-school.git
+
+# Container image
 SINGULARITY_IMAGE=oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:Unstable
 
 # Set user, password and port
@@ -75,6 +78,8 @@ Once you have started Rstudio with our container, you can start your analysis.
 - Log in with the credentials:  
   - Username: `${SINGULARITYENV_RSTUDIO_USER}`  
   - Password: `${SINGULARITYENV_RSTUDIO_PASSWORD}`
+- Download required datasets with the `datasets/download.R` script
+- Open `workbooks/read_dataset_to_seurat.qmd`
 
 You're now ready to explore the workbooks in a fully configured RStudio environment!
 
