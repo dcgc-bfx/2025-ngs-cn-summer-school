@@ -685,7 +685,7 @@ We can also visualize the gene expression directly on top of the **UMAP plot**. 
 ```{r}
 #| label: plotting_2
 
-FeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
+FeaturePlot(sc, features=c("Acta2", "Apoe"))
 ```
 
 Since we are working with spatial data, you can visualize gene expression in the **spatial context**, showing where the genes are expressed on the tissue section:
@@ -693,7 +693,7 @@ Since we are working with spatial data, you can visualize gene expression in the
 ```{r}
 #| label: plotting_3
 
-SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"), pt.size=0)
+SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"))
 ```
 
 A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. Here's an example where we plot the expression of 10 genes across clusters 1 to 10:
@@ -883,6 +883,8 @@ gc()
 If you want to learn more about BANKSY, we find these pages helpful: 
 * https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md  
 * https://github.com/prabhakarlab/Banksy?tab=readme-ov-file
+
+:::
 
 # Cell type annotation by deconvolution
 
