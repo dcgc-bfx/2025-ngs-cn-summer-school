@@ -36,11 +36,4 @@ format:
     theme:
     - "serif"
     - "css/html.scss"
-  revealjs:
-    theme:
-    - "serif"
-    - "css/revealjs.scss"
-    smaller: true
-    auto-stretch: false
-    df-print: "default"
 
