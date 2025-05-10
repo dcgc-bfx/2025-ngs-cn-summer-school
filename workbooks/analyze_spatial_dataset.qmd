@@ -41,7 +41,7 @@ cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05",
               "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", 
               "#000000", "#a4527c", "#041859")
 
-# ggplot2 defaults
+# Set default colours for ggplot2
 options(ggplot2.discrete.colour=cal_pal50)
 options(ggplot2.discrete.fill=cal_pal50)
 options(ggplot2.continuous.colour="viridis")
@@ -52,10 +52,12 @@ options(ggplot2.binned.fill="viridis")
 
 # Loading the dataset
 
+In this session, we focus on the 8 µm bins and do not need load the 16 µm bins.
+
 ```{r}
 #| label: dataset
 
-sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size=c(8, 16), assay="RNA")
+sc = Load10X_Spatial("datasets/visiumhd_mouse_brain", bin.size=c(8), assay="RNA")
 sc$orig.ident = "brain"
 Idents(sc) = "brain"
 ```
@@ -126,8 +128,8 @@ This tells us how many genes are detected per bin — essentially a measure of c
 ```{r}
 #| label: qc_3
 
-p1 <- VlnPlot(sc, features="nFeature_RNA.008um", pt.size=0, layer="counts") + NoLegend()
-p2 <- SpatialFeaturePlot(sc, features="nFeature_RNA.008um")
+p1 = VlnPlot(sc, features="nFeature_RNA.008um", pt.size=0, layer="counts") + NoLegend()
+p2 = SpatialFeaturePlot(sc, features="nFeature_RNA.008um")
 p1 | p2
 
 summary(sc$nFeature_RNA.008um)
@@ -714,7 +716,8 @@ For a more detailed look, we can create a **heatmap** to visualize the expressio
 #| label: plotting_5
 
 set.seed(1)
-cluster_bins = Cells(sc) %>% sample(10000)
+cluster_bins = Cells(sc) %>% 
+  sample(10000)
 
 DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"), 
           cells=cluster_bins,
