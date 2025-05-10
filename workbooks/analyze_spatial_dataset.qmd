@@ -113,7 +113,7 @@ If they form a distinct pattern, reconsider the threshold — you might be remov
 #| label: qc_2
 
 filtered_bins_counts = WhichCells(sc, expression=nCount_RNA.008um < 30 | nCount_RNA.008um > 2000)
-SpatialDimPlot(sc, cells.highlight=filtered_bins_counts, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_counts, cols.highlight=c("#FFFF00", "grey50")) + NoLegend() + ggtitle(paste(length(filtered_bins_counts), "bins filtered"))
 ```
 
 ::: {.callout-note}
@@ -139,7 +139,7 @@ summary(sc$nFeature_RNA.008um)
 #| label: qc_4
 
 filtered_bins_genes = WhichCells(sc, expression = nFeature_RNA.008um < 30 | nFeature_RNA.008um > 1000)
-SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF00", "grey50")) + NoLegend() + ggtitle(paste(length(filtered_bins_genes), "bins filtered"))
 ```
 
 ## Mitochondrial content
@@ -162,7 +162,7 @@ p1 | p2
 #| label: qc_6
 
 filtered_bins_mito = WhichCells(sc, expression=pMito_RNA.008um>30)
-SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
+SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend() + ggtitle(paste(length(filtered_bins_mito), "bins filtered"))
 ```
 
 ## Filtering of bins
@@ -209,7 +209,7 @@ Let us quickly summarize these numbers. Most of the genes are expressed in at le
 summary(genes_expressed)
 ```
 
-Filter out genes expressed in ≤10 bins:
+Keep genes expressed in >10 bins:
 
 ```{r}
 #| label: qc_11
@@ -298,10 +298,10 @@ Here, we determine the top 1000 HVGs:
 ```{r}
 #| label: preprocessing_3
 
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
+sc = FindVariableFeatures(sc, nfeatures=1000)
 ```
 
-Note that 1,000 HGVs represents the lower end of the possible range. However, for demonstration purposes and to save memory, we use 1,000 in this example.
+Note that 1,000 HVGs represents the lower end of the possible range. However, for demonstration purposes and to save memory, we use 1,000 in this example.
 
 Get the top 10 HVGs and plot them:
 
@@ -351,7 +351,7 @@ sc = SketchData(sc, ncells=50000, method="LeverageScore", sketched.assay="sketch
 sc
 ```
 
-When we print the Seurat object, we see that the default is now the sketch assay. We can also check that it is indeed smaller:
+When we print the Seurat object, we see that the default assay is now the sketch assay. We can also check that it is indeed smaller:
 
 ```{r}
 #| label: preprocessing_8
@@ -359,12 +359,12 @@ When we print the Seurat object, we see that the default is now the sketch assay
 GetAssay(sc, assay="sketch")
 ```
 
-Repeat HVG selection and scaling for the sketch:
+Repeat HVG selection and scaling for the sketch assay:
 
 ```{r}
 #| label: preprocessing_9
 
-sc = FindVariableFeatures(sc, selection.method="vst", nfeatures=1000)
+sc = FindVariableFeatures(sc, nfeatures=1000)
 sc = ScaleData(sc, features=VariableFeatures(sc))
 GetAssay(sc, assay="sketch")
 ```
@@ -452,7 +452,7 @@ Graphs(sc)
 
 After constructing the nearest-neighbor graph, we apply the Leiden algorithm to perform the clustering. The Leiden algorithm is an improvement over the Louvain method and works by optimizing modularity. It groups bins into clusters such that bins within the same cluster are more connected to each other than to bins in other clusters.
 
-We call the `FindClusters` function with `algorithm=4`, which tells Seurat to use the Leiden algorithm. We also need to specify the resolution parameter. This parameter controls the granularity of the clustering:
+We call the `FindClusters` function with `algorithm="leiden"`, which tells Seurat to use the Leiden algorithm. We also need to specify the resolution parameter. This parameter controls the granularity of the clustering:
 
 * Higher resolution values lead to more clusters  
 * Lower resolution values lead to fewer clusters  
@@ -462,7 +462,8 @@ We will start with a resolution of 2, but this can be adjusted later depending o
 ```{r}
 #| label: clustering_2
 
-sc = FindClusters(sc, resolution=2, algorithm="leiden", random.seed=1)
+# method="igraph" is nessessary for Seurat versions < 5.2
+sc = FindClusters(sc, resolution=2, algorithm="leiden", random.seed=1, method="igraph")
 
 # Save as extra metadata column
 sc$seurat_clusters.sketch = sc$seurat_clusters
@@ -492,6 +493,7 @@ We run the `RunUMAP` function and use the first 30 PCs as input. This creates a 
 ```{r}
 #| label: clustering_4
 
+# return.model is only needed when doing sketching
 sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch", dims=1:30, return.model=TRUE)
 ```
 
@@ -698,19 +700,9 @@ Since we are working with spatial data, you can visualize gene expression in the
 SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"))
 ```
 
-A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. Here's an example where we plot the expression of 10 genes across clusters 1 to 10:
+A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. We have demonstrated the dot plot already when looking for marker genes - so we do not show it here again.
 
-```{r}
-#| label: plotting_4
-
-DotPlot(sc, idents=1:10, 
-        features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"),
-        scale=TRUE) + 
-  scale_color_viridis() +
-  theme(axis.text.x=element_text(angle=45, hjust=1))
-```
-
-For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of cells. This allows for a more focused analysis of gene expression patterns across specific clusters.
+For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of bins (10000). This allows for a more focused analysis of gene expression patterns across specific clusters.
 
 ```{r}
 #| label: plotting_5
@@ -719,7 +711,7 @@ set.seed(1)
 cluster_bins = Cells(sc) %>% 
   sample(10000)
 
-DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", "Olfm1", "Penk", "Ptgds", "Pcp4"), 
+DoHeatmap(sc, features=c("Hap1", "Nap1l5", "Gaa", "Pcp4", "Prkcd", "Rora", "Rgs5", "Itm2a", "Itm2a"), 
           cells=cluster_bins,
           group.colors=cal_pal50, 
           label=FALSE) + 
@@ -731,7 +723,7 @@ DoHeatmap(sc, features=c("Hap1", "Nrgn", "Snap25", "Camk2n1", "Apoe", "Nap1l5", 
 #| label: rm_1
 
 # Remove since not used anymore and we need the memory.
-rm(counts, data, scale_data, assay, umap)
+rm(counts, data, scale_data, umap)
 
 # R will automatically clear the memory of freed objects whenever it needs more space.
 # But in our experience it is sometimes better to explicitly tell R to do this - especially when working with big objects.
@@ -1183,6 +1175,32 @@ ggplot(cell_type_banksy_domain_counts,
   ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
   theme_minimal()
 ```
+
+# Export results to Loupe
+
+Previously, you learned already about the Loupe Browser as handy tool for browsing through your data. In this section, we will export the results of our analysis as CSV files so that they can be imported into Loupe:
+
+```{r}
+# Only for the 8 um bins
+bins_to_export = Cells(sc[["RNA.008um"]])
+
+# Bin metadata
+metadata_to_export = sc[[]][bins_to_export, ] %>%
+  dplyr::select(orig.ident, seurat_clusters.008um) %>%
+  tibble::rownames_to_column("barcode")
+
+write.csv(metadata_to_export, "datasets/exported_bin_metadata.csv", row.names=FALSE)
+
+# UMAP
+umap_to_export = Embeddings(sc[["umap.008um"]])[bins_to_export, ] %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("Barcode")
+write.csv(umap_to_export, "datasets/exported_umap.csv", row.names=FALSE)
+```
+
+Information about importing results into Loupe can be found in the [Loupe tutorial](https://www.10xgenomics.com/support/software/loupe-browser/latest/tutorials/introduction/lb-sc-interface-and-navigation).
+
+ sc[["im"]] = Crop(im, x = c(10000, 11000), y = c(8000, 9000), coords = "tissue")
 
 # Other useful resources
 
