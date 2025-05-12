@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --time=24:00:00
+#SBATCH --time=96:00:00
 #SBATCH --signal=B:SIGUSR1@300
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=30
@@ -8,17 +8,7 @@
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
 #SBATCH --partition=ngs.q
-#SBATCH --nodelist=compute-2-2
-
-# Note for IT:        
-# Take this script and adapt it for all users (line 9-11)
-# Also adapt login information and port (line 21-28)
-
-# Note for us: 
-# Git clone repository
-# Download data
-# Create Rstudio project
-# Add download link for sif
+#SBATCH --nodelist=compute-2-3
 
 ###################################                       
 # USER-SPECIFIC SETTINGS (CHANGE) #

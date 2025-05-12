@@ -29,7 +29,6 @@ library(patchwork)  # Helps combine multiple ggplot2 plots into one figure
 library(tidyverse)  # Essential collection of R packages, including ggplot2, dplyr, magrittr
 library(grid)       # For other plots
 library(viridis)    # Our continuous colour palette
-library(spacexr)    # Deconvolution 
 
 # Colours
 cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05", 
@@ -42,7 +41,7 @@ cal_pal50 = c("#Fa1a8e", "#009B7D", "#ff9933", "#7083a4", "#ffce45", "#015e05",
               "#d81e4a", "#74646c", "#f675da", "#ffce45", "#ec7014", "#e50000", 
               "#000000", "#a4527c", "#041859")   
 
-# ggplot2 defaults
+# Set default colours for ggplot2
 options(ggplot2.discrete.colour=cal_pal50)
 options(ggplot2.discrete.fill=cal_pal50)
 options(ggplot2.continuous.colour="viridis")
@@ -128,15 +127,15 @@ Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which 
 
 # barcodes.tsv.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/barcodes.tsv.gz", 
-           header = FALSE, nrows = 5)
+           header=FALSE, nrows=5)
 
 # features.tsv.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/features.tsv.gz", 
-           header = FALSE, nrows = 5)
+           header=FALSE, nrows=5)
 
 # matrix.mtx.gz
 read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_feature_bc_matrix/matrix.mtx.gz", 
-           skip = 2, nrows = 5, header = FALSE, sep = " ")
+           skip=2, nrows=5, header=FALSE, sep=" ")
 ```
 
 ::: {.callout-tip}
@@ -338,7 +337,7 @@ Gene metadata can be accessed using the `[[]]` syntax on the Seurat assay object
 #| label: dataset_16
 #| message: true
 
-assay <- GetAssay(sc, assay = "RNA.008um")
+assay = GetAssay(sc, assay="RNA.008um")
 assay[[]] %>% head(5)
 ```
 
@@ -415,7 +414,7 @@ We can create a **violin plot** to show the expression of specific genes (e.g., 
 ```{r}
 #| label: dataset_22
 
-VlnPlot(sc, features = c("Nrgn", "Igf2", "Hap1"), layer="counts", pt.size = 0) + NoLegend()
+VlnPlot(sc, features=c("Nrgn", "Igf2", "Hap1"), layer="counts", pt.size=0) + NoLegend()
 ```
 
 Since the counts are raw and not normalized, interpreting them directly can be challenging.
@@ -437,16 +436,26 @@ You may observe visual artefacts in the image. This can occur when the image is 
 
 ### Comparison Between 8µm and 16µm Bins
 
-Finally, we can plot the gene expression in the **RNA.016um assays**. This allows us to visualize how the data changes when comparing different bin sizes.
+Finally, we can plot the gene expression in the **RNA.016um assay**. This allows us to visualize how the data changes when comparing different bin sizes.
 
 ```{r}
 #| label: dataset_24
 
-DefaultAssay(sc) <- "RNA.016um"
-p1 <- VlnPlot(sc, features = c("Nrgn"), layer="counts", pt.size = 0) + NoLegend()
-p2 <- SpatialFeaturePlot(sc, features = c("Nrgn"), slot = "counts")
-DefaultAssay(sc) <- "RNA.008um"
+DefaultAssay(sc) = "RNA.016um"
+p1 = VlnPlot(sc, features=c("Nrgn"), layer="counts", pt.size=0) + NoLegend()
+p2 = SpatialFeaturePlot(sc, features=c("Nrgn"), slot="counts")
+DefaultAssay(sc) = "RNA.008um"
 p1 | p2
+```
+
+# Session info
+
+We can include information about the R session and packages used in this analysis. This is useful for reproducibility and sharing your work with others:
+
+```{r}
+#| label: session_info
+
+sessioninfo::session_info()
 ```
 
 **Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**
