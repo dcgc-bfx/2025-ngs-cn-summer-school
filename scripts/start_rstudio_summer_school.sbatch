@@ -8,7 +8,7 @@
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
 #SBATCH --partition=ngs.q
-#SBATCH --nodelist=compute-2-2
+#SBATCH --nodelist=compute-2-3
 
 ###################################                       
 # USER-SPECIFIC SETTINGS (CHANGE) #
