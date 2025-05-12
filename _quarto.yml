@@ -18,8 +18,8 @@ execute:
 #################
 knitr:
   opts_chunk:
-    timeit: null
-    dpi: 400
+    timeit: true
+    dpi: 300
     fig-width: 8
     fig-height: 5
     dev:
