@@ -1188,6 +1188,8 @@ Here we can identify several BANKSY domains as excitatory neuron layers.
 Previously, you learned already about the Loupe Browser as handy tool for browsing through your data. In this section, we will export the results of our analysis as CSV files so that they can be imported into Loupe:
 
 ```{r}
+#| label: loupe_export
+
 # Only for the 8 um bins
 bins_to_export = Cells(sc[["RNA.008um"]])
 
@@ -1207,7 +1209,17 @@ write.csv(umap_to_export, "datasets/exported_umap.csv", row.names=FALSE)
 
 Information about importing results into Loupe can be found in the [Loupe tutorial](https://www.10xgenomics.com/support/software/loupe-browser/latest/tutorials/introduction/lb-sc-interface-and-navigation).
 
-# Other useful resources
+# Session info
+
+We can include information about the R session and packages used in this analysis. This is useful for reproducibility and sharing your work with others:
+
+```{r}
+#| label: session_info
+
+sessioninfo::session_info()
+```
+
+# Useful resources
 
 - [OSTA Visium HD Workflow](https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html)
 - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)

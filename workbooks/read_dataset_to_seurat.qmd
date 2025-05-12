@@ -448,6 +448,16 @@ DefaultAssay(sc) = "RNA.008um"
 p1 | p2
 ```
 
+# Session info
+
+We can include information about the R session and packages used in this analysis. This is useful for reproducibility and sharing your work with others:
+
+```{r}
+#| label: session_info
+
+sessioninfo::session_info()
+```
+
 **Now that we have successfully loaded the data into Seurat and explored the structure of the Seurat object, it's time to move on to the next step: data analysis.**
 
 **To free the occupied memory, please restart the R session in RStudio via Session->Restart R.**
