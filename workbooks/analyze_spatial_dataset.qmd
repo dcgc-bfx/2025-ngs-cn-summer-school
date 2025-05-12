@@ -1106,8 +1106,8 @@ sc$second_cell_type.008um = factor(sc$second_cell_type.008um)
 
 ## Visualize the results
 
-We can now visualize cell type predictions. For example, here we highlight three predicted excitatory neuron layers:
-
+We can now visualize cell type predictions. For example, here we highlight three predicted excitatory neuron layers (typically labeled as L2/3, L4/5, and L5) on the spatial plot:
+:
 ```{r}
 #| label: annot_13
 
@@ -1120,24 +1120,28 @@ layered_excitatory_bins[["NA"]] = NULL
 SpatialDimPlot(sc, cells.highlight=layered_excitatory_bins, facet.highlight=TRUE, cols.highlight=c("#FFFF00", "grey50")) + NoLegend()
 ```
 
-## Annotate `seurat_clusters`, BANKSY clusters, BANKSY domains
+## Annotate clusters and domains
 
-Using the predicted cell types, we can now annotate our clusters and domains. Keep in mind that predictions were only generated for a subset of the dataset, so results may not apply to all clusters.
+Using the predicted cell types, we can now try to annotate our clusters and domains. Keep in mind that predictions were only generated for a subset of the dataset, so results may not apply to all clusters.
 
-Seurat clusters: 
+We plot the distribution of predicted cell types for the `seurat_clusters` and `banksy_clusters`:
 
 ```{r}
 #| label: annot_14
 
 cell_type_seurat_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um != "Unknown") %>%
          dplyr::count(first_cell_type.008um, seurat_clusters.008um)
 
 ggplot(cell_type_seurat_cluster_counts,
        aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
-  geom_bar(stat = "identity", position = "fill")
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+                position = position_stack(vjust = 0.5), size = 3) +
+  ylab("# of bins") +
+  ggtitle(paste0("Distribution of Cell Types across seurat clusters")) +
+  theme_minimal()
 ```
-
-BANKSY clusters: 
 
 ```{r}
 #| label: annot_15
@@ -1148,24 +1152,25 @@ cell_type_banksy_cluster_counts = sc[[]] %>%
 
 ggplot(cell_type_banksy_cluster_counts,
        aes(x=banksy_clusters.008um, y=n, fill=first_cell_type.008um)) +
-  geom_bar(stat = "identity", position = "fill")
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+                position = position_stack(vjust = 0.5), size = 3) +
+  ylab("# of bins") +
+  ggtitle(paste0("Distribution of Cell Types across BANKSY clusters")) +
+  theme_minimal()
 ```
 
-BANKSY domains:
+We see that many clusters contain multiple prediced cell types and that clustering still needs to be improved. However it is also clear that many bins could contain multiple cell types which makes clustering more difficult.
 
-We now evaluate the spatial domains in terms of excitatory neuron layer annotations from the Allen Brain Atlas.
+Annotation may work better for larger structures such as the `banksy_domains`:
 
 ```{r}
 #| label: annot_16
 
-layered_excitatory_neurons = c("L2-3 IT CTX", "L4-5 IT CTX", "L5 IT CTX", "L5 PT CTX", "L5-6 NP CTX", "L6 CT CTX", "L6 IT CTX", "L6b CTX")
-
-# First we count the number of bins predicted to contain excitatory neurons per BANKSY domain:
 cell_type_banksy_domain_counts = sc[[]] %>%
   dplyr::filter(first_cell_type.008um %in% layered_excitatory_neurons) %>%
   dplyr::count(first_cell_type.008um, banksy_domains.008um)
 
-# Then we use ggplot
 ggplot(cell_type_banksy_domain_counts,
        aes(x=banksy_domains.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "stack") +
@@ -1175,6 +1180,8 @@ ggplot(cell_type_banksy_domain_counts,
   ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
   theme_minimal()
 ```
+
+Here we can identify several BANKSY domains as excitatory neuron layers.
 
 # Export results to Loupe
 
@@ -1199,8 +1206,6 @@ write.csv(umap_to_export, "datasets/exported_umap.csv", row.names=FALSE)
 ```
 
 Information about importing results into Loupe can be found in the [Loupe tutorial](https://www.10xgenomics.com/support/software/loupe-browser/latest/tutorials/introduction/lb-sc-interface-and-navigation).
-
- sc[["im"]] = Crop(im, x = c(10000, 11000), y = c(8000, 9000), coords = "tissue")
 
 # Other useful resources
 
