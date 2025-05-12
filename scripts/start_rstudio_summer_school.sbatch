@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --time=24:00:00
+#SBATCH --time=96:00:00
 #SBATCH --signal=B:SIGUSR1@300
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=30
