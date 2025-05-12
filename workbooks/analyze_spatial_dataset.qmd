@@ -48,6 +48,19 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
+
+# Hook to measure the computation time of a chunk
+# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
+knitr::knit_hooks$set(timeit = function(before, options, envir) {
+  if(before) {
+    ## code to be run before a chunk
+    tictoc::tic()
+  } else {
+    ## code to be run after a chunk
+    elapsed = tictoc::toc()$toc
+    print(paste0("Execution took ", elapsed, " seconds"))
+  }
+})
 ```
 
 # Loading the dataset
