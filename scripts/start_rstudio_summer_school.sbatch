@@ -10,16 +10,6 @@
 #SBATCH --partition=ngs.q
 #SBATCH --nodelist=compute-2-2
 
-# Note for IT:        
-# Take this script and adapt it for all users (line 9-11)
-# Also adapt login information and port (line 21-28)
-
-# Note for us: 
-# Git clone repository
-# Download data
-# Create Rstudio project
-# Add download link for sif
-
 ###################################                       
 # USER-SPECIFIC SETTINGS (CHANGE) #
 ###################################
