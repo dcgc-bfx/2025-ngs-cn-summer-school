@@ -522,6 +522,22 @@ p1 | p2
 
 Here we can clearly see that we only analysed a subsampled dataset.
 
+::: {.callout-note}
+## Assignment
+
+Test different `n.neighbors` to find a good 2D representation of the dataset. Plot the old and new UMAP next to each other for comparison.
+:::
+
+```{r}
+#| label: clustering_4_5_test
+sc = RunUMAP(sc, reduction="pca.sketch", reduction.name="umap.sketch.test", dims=1:30, 
+             n.neighbors=100)
+
+p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
+p2 = DimPlot(sc, reduction="umap.sketch.test", label=TRUE) + NoLegend()
+p1 | p2
+```
+
 ## Analysing the full dataset
 
 Once we have finished analyzing the sketched dataset, we can project the learned cluster labels, PCA, and UMAP from the sketch assay onto the entire dataset. This allows us to transfer the insights gained from the subsampled dataset to the full dataset, which may have additional complexity.
@@ -713,7 +729,7 @@ Since we are working with spatial data, you can visualize gene expression in the
 SpatialFeaturePlot(sc, features=c("Acta2", "Apoe"))
 ```
 
-A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. We have demonstrated the dot plot already when looking for marker genes - so we do not show it here again.
+A **dot plot** allows for the visualization of gene expression across multiple clusters for several genes. We have already introduced the dot plot for exploring marker gene expression. To avoid redundancy, we will not revisit it in this section.
 
 For a more detailed look, we can create a **heatmap** to visualize the expression of the same genes in a subset of bins (10000). This allows for a more focused analysis of gene expression patterns across specific clusters.
 
@@ -759,6 +775,7 @@ However, a key limitation of this approach is that it treats each spatial bin in
 [BANKSY](https://github.com/prabhakarlab/Banksy) is a computational method specifically designed for spatial transcriptomics analysis. By integrating information from neighboring bins, BANKSY can reduce noise in gene expression data, distinguish between different cell types based on spatial context, and identify spatial domains. 
 
 BANKSY represents each cell or bin not only by its own transcriptomic profile but also by the average expression of its local neighborhood. This dual representation captures both intrinsic cellular identity and microenvironmental context. The degree to which neighborhood information is incorporated is controlled by the lambda parameter:  
+
 * Lower values (e.g., **lambda = 0.2**) emphasize immediate neighbors — useful for **cell typing**  
 * Higher values (e.g., **lambda = 0.8**) incorporate broader spatial context — useful for **domain detection**  
 
@@ -889,8 +906,9 @@ gc()
 ## Recommended reading
 
 If you want to learn more about BANKSY, we find these pages helpful: 
+
 * https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md  
-* https://github.com/prabhakarlab/Banksy?tab=readme-ov-file
+* https://github.com/prabhakarlab/Banksy?tab=readme-ov-file  
 
 :::
 
@@ -1183,7 +1201,7 @@ ggplot(cell_type_banksy_cluster_counts,
   theme_minimal()
 ```
 
-We see that many clusters contain multiple prediced cell types and that clustering still needs to be improved. However it is also clear that many bins could contain multiple cell types which makes clustering more difficult.
+We observe that several **clusters** contain multiple predicted cell types, indicating that clustering performance should still be improved. However, it is also evident that many **bins** may contain more than one cell type, which inherently complicates the clustering process.
 
 Annotation may work better for larger structures such as the `banksy_domains`:
 
@@ -1206,9 +1224,15 @@ ggplot(cell_type_banksy_domain_counts,
 
 Here we can identify several BANKSY domains as excitatory neuron layers.
 
+::: {.callout-note}
+## Assignment
+
+Find marker genes for the identified BANKSY domains, and suggest the identify of at least 1 domain
+:::
+
 # Export results to Loupe
 
-Previously, you learned already about the Loupe Browser as handy tool for browsing through your data. In this section, we will export the results of our analysis as CSV files so that they can be imported into Loupe:
+In a previous session, we introduced the Loupe Browser as a convenient tool for exploring spatial transcriptomics data. In this section, we will export the results of our analysis as CSV files, enabling their import and further exploration in Loupe.
 
 ```{r}
 #| label: loupe_export
@@ -1234,7 +1258,7 @@ Information about importing results into Loupe can be found in the [Loupe tutori
 
 # Session info
 
-We can include information about the R session and packages used in this analysis. This is useful for reproducibility and sharing your work with others:
+To enhance reproducibility and facilitate the sharing of your analysis, it is good practice to include information about the R session and the packages used:
 
 ```{r}
 #| label: session_info

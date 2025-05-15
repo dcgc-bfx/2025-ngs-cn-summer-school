@@ -450,7 +450,7 @@ p1 | p2
 
 # Session info
 
-We can include information about the R session and packages used in this analysis. This is useful for reproducibility and sharing your work with others:
+To enhance reproducibility and facilitate the sharing of your analysis, it is good practice to include information about the R session and the packages used:
 
 ```{r}
 #| label: session_info
