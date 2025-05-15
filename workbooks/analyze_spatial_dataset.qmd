@@ -1244,8 +1244,21 @@ sessioninfo::session_info()
 
 # Useful resources
 
-- [OSTA Visium HD Workflow](https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html)
-- [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
-- [banksy](https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md)
+- Best practices:
+  - [Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
+  - [Orchestrating Single-Cell Analysis with Bioconductor
+](https://bioconductor.org/books/release/OSCA/)
+  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor
+](https://lmweber.org/OSTA/)
+- Seurat:
+  - [Essential commands](https://satijalab.org/seurat/articles/essential_commands)
+  - [Basic Single-cell Analysis Vignette](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
+  - [Seurat Visium Analysis Vignette](https://satijalab.org/seurat/articles/spatial_vignette)
+  - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
+- Tools:
+  - [Spaceranger](https://www.10xgenomics.com/support/software/space-ranger/latest)
+  - [Loupe Browser](https://www.10xgenomics.com/support/software/loupe-browser/latest)
+  - [Spotsweeper](https://github.com/MicTott/SpotSweeper)
+  - [banksy](https://github.com/prabhakarlab/Banksy)
 
 
