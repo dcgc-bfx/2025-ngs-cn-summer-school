@@ -945,7 +945,7 @@ To make the analysis computationally manageable, we sketch the dataset down to 5
 #| label: annot_3
 
 # Sketch
-cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+cortex = FindVariableFeatures(cortex, nfeatures=1000)
 cortex = SketchData(
   object = cortex,
   ncells = 50000,
@@ -954,7 +954,7 @@ cortex = SketchData(
   over.write = TRUE
 )
 # Feature selection
-cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+cortex = FindVariableFeatures(cortex, nfeatures=1000)
 
 # Scale data
 cortex = ScaleData(cortex, features=VariableFeatures(cortex))
@@ -998,7 +998,8 @@ We use the `subclass_label` column for cell type annotations:
 ```{r}
 #| label: annot_6
 
-ref[[]] %>% dplyr::select(subclass_label) %>% head()
+ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
+table(ref$subclass_label)
 ```
 
 We convert this Seurat object into a `spacexr` Reference object:
@@ -1081,7 +1082,7 @@ cortex$second_cell_type = factor(cortex$second_cell_type)
 
 ## Project back and transfer results
 
-We now project the RCTD results from the cortex sketch dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
+We now project the RCTD results from the sketch cortex dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
 
 ```{r}
 #| label: annot_11
@@ -1142,15 +1143,24 @@ We plot the distribution of predicted cell types for the `seurat_clusters` and `
 ```{r}
 #| label: annot_14
 
+# Only analyze cluster for which at least 100 bins have cell type predictions (not unknown)
+cluster_of_interest = sc[[]] %>%
+  dplyr::group_by(seurat_clusters.008um) %>%
+  dplyr::summarise(bins_annotated = sum(first_cell_type.008um != "Unknown") / length(first_cell_type.008um)) %>%
+  dplyr::filter(frac_annotated >= 0.75) %>%
+  dplyr::pull(seurat_clusters.008um)
+
+# Count cell types per cluster
 cell_type_seurat_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um != "Unknown") %>%
+         dplyr::filter(seurat_clusters.008um %in% cluster_of_interest) %>%
          dplyr::count(first_cell_type.008um, seurat_clusters.008um)
 
+# Plot distribution
 ggplot(cell_type_seurat_cluster_counts,
        aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "fill") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
-                position = position_stack(vjust = 0.5), size = 3) +
+  #geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+  #              position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
   ggtitle(paste0("Distribution of Cell Types across seurat clusters")) +
   theme_minimal()
