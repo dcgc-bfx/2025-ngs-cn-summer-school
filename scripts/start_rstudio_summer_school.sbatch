@@ -7,7 +7,9 @@
 #SBATCH --output=rstudio_summer_school_login.txt
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
+#
 # EDIT: --partition (line 11), --nodelist (line 12) and PORT (line 25)
+#
 #SBATCH --partition=ngs.q
 #SBATCH --nodelist=compute-2-3
 
