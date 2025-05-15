@@ -6,6 +6,8 @@
 .Rproj.user
 .DS_Store
 !2025-ngs-cn-summer-school.Rproj
+*.sif
+
 /.quarto/
 /workbooks/cache/
 /workbooks/*_files/
@@ -17,7 +19,7 @@
 /datasets/RCTD.Rds
 /datasets/allen_scRNAseq_ref.Rds
 /datasets/cortex_coordinates.csv
+/datasets/exported_bin_metadata.csv
+/datasets/exported_umap.csv
 rstudio_summer_school_errors.txt
 rstudio_summer_school_login.txt
-
-
