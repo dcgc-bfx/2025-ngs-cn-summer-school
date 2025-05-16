@@ -48,19 +48,6 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
-
-# Hook to measure the computation time of a chunk
-# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
-knitr::knit_hooks$set(timeit = function(before, options, envir) {
-  if(before) {
-    ## code to be run before a chunk
-    tictoc::tic()
-  } else {
-    ## code to be run after a chunk
-    elapsed = tictoc::toc()$toc
-    print(paste0("Execution took ", elapsed, " seconds"))
-  }
-})
 ```
 
 # Loading the dataset
@@ -159,7 +146,7 @@ SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF0
 
 Mitochondrial RNA (mtRNA) often increases when cells are stressed or dying. A high percentage is a red flag.
 
-We identify mitochondrial genes using a prefix (^mt-) and calculate their percentage per bin:
+We identify mitochondrial genes using a prefix ("^mt-" means all genes starting with "mt-") and calculate their percentage per bin:
 
 ```{r}
 #| label: qc_5
@@ -177,6 +164,13 @@ p1 | p2
 filtered_bins_mito = WhichCells(sc, expression=pMito_RNA.008um>30)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend() + ggtitle(paste(length(filtered_bins_mito), "bins filtered"))
 ```
+
+::: {.callout-note}
+## Assignment
+Calculate another QC metric `pMito_RNA.008um` that contains the percentage of counts from hemoglobin genes per bin. You can identify hemoglobin genes with the prefix "^Hb[ab]-".
+
+Then plot it as violin plot and as spatial plot. Do many bins have hemoglobin?
+:::
 
 ## Filtering of bins
 
@@ -514,6 +508,7 @@ Note that `umap.sketch` is now the default dimensionality reduction. We can colo
 
 ```{r}
 #| label: clustering_5
+#| dpi: 75
 
 p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
 p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=cal_pal50)
@@ -1161,64 +1156,63 @@ We plot the distribution of predicted cell types for the `seurat_clusters` and `
 ```{r}
 #| label: annot_14
 
-# Only analyze cluster for which at least 100 bins have cell type predictions (not unknown)
-cluster_of_interest = sc[[]] %>%
-  dplyr::group_by(seurat_clusters.008um) %>%
-  dplyr::summarise(bins_annotated = sum(first_cell_type.008um != "Unknown") / length(first_cell_type.008um)) %>%
-  dplyr::filter(frac_annotated >= 0.75) %>%
-  dplyr::pull(seurat_clusters.008um)
+# Include cell types with at least 100 bins annotated
+# Do not include bins with "Unknown" cell type
+bins_per_cell_type = table(sc$first_cell_type.008um)
+cell_types_to_include = which(bins_per_cell_type >= 100) %>% names()
+cell_types_to_include = cell_types_to_include[cell_types_to_include != "Unknown"]
 
 # Count cell types per cluster
-cell_type_seurat_cluster_counts = sc[[]] %>% 
-         dplyr::filter(seurat_clusters.008um %in% cluster_of_interest) %>%
+cell_type_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
          dplyr::count(first_cell_type.008um, seurat_clusters.008um)
 
 # Plot distribution
-ggplot(cell_type_seurat_cluster_counts,
+ggplot(cell_type_cluster_counts,
        aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "fill") +
-  #geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
-  #              position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
   ggtitle(paste0("Distribution of Cell Types across seurat clusters")) +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
 ```
 
 ```{r}
 #| label: annot_15
 
-cell_type_banksy_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um != "Unknown") %>%
+# Count cell types per cluster
+cell_type_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
          dplyr::count(first_cell_type.008um, banksy_clusters.008um)
 
-ggplot(cell_type_banksy_cluster_counts,
+# Plot distribution
+ggplot(cell_type_cluster_counts,
        aes(x=banksy_clusters.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "fill") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
-                position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
-  ggtitle(paste0("Distribution of Cell Types across BANKSY clusters")) +
-  theme_minimal()
+  ggtitle(paste0("Distribution of Cell Types across banksy clusters")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
 ```
 
 We observe that several **clusters** contain multiple predicted cell types, indicating that clustering performance should still be improved. However, it is also evident that many **bins** may contain more than one cell type, which inherently complicates the clustering process.
 
-Annotation may work better for larger structures such as the `banksy_domains`:
+Annotation may work better for larger structures such as the `banksy_domains`. Here we have a look some of the excitatory neurons that we identified in the previous section and try to find protein domains:
 
 ```{r}
 #| label: annot_16
 
-cell_type_banksy_domain_counts = sc[[]] %>%
+cell_type_domain_counts = sc[[]] %>%
   dplyr::filter(first_cell_type.008um %in% layered_excitatory_neurons) %>%
   dplyr::count(first_cell_type.008um, banksy_domains.008um)
 
-ggplot(cell_type_banksy_domain_counts,
-       aes(x=banksy_domains.008um, y=n, fill=first_cell_type.008um)) +
+ggplot(cell_type_domain_counts,
+       aes(x=first_cell_type.008um, y=n, fill=banksy_domains.008um)) +
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")),
                 position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
-  ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
+  ggtitle(paste0("Protein Domains with selected excitatory neurons")) +
   theme_minimal()
 ```
 

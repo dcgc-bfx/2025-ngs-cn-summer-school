@@ -48,19 +48,6 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
-
-# Hook to measure the computation time of a chunk
-# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
-knitr::knit_hooks$set(timeit = function(before, options, envir) {
-  if(before) {
-    ## code to be run before a chunk
-    tictoc::tic()
-  } else {
-    ## code to be run after a chunk
-    elapsed = tictoc::toc()$toc
-    print(paste0("Execution took ", elapsed, " seconds"))
-  }
-})
 ```
 
 # Our dataset
@@ -122,6 +109,8 @@ Let us take a closer look at the `filtered_feature_bc_matrix/` directory, which 
    * All other rows contain the gene index (row in `features.tsv.gz`), bin index (row in `barcodes.tsv.gz`) and the count value.
    * Only non-zero counts are stored.
 
+Here are the first few lines of each file for the 016 µm dataset:
+
 ```{r}
 #| label: dataset_1
 
@@ -142,6 +131,11 @@ read.delim("datasets/visiumhd_mouse_brain/binned_outputs/square_016um/filtered_f
 ### Example
 This dataset has 19,059 genes, 98,917 bins and 68,259,814 counts.  
 Row 2: Gene #**17** (Vxn) has in bin #**1** (s_016um_00052_00082-1) a count of **3**.
+:::
+
+::: {.callout-note}
+### Assignment
+Find out how many bins, genes and counts are in the 8µm dataset. 
 :::
 
 # The Seurat object
@@ -353,7 +347,7 @@ Dimensionality reductions (e.g., PCA, UMAP, tSNE) are essential for visualizing 
 Reductions(sc)
 ```
 
-Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `GetReduction` function or the `[[]]` syntax.
+Currently, there are no reductions in the Seurat object. If they were present, you could access them using the `Reductions` function or the `[[]]` syntax.
 
 ## Neighbors and graphs
 
@@ -425,6 +419,7 @@ We can also visualize gene expression in a spatial context using a **spatial fea
 
 ```{r}
 #| label: dataset_23
+#| dpi: 75
 
 SpatialFeaturePlot(sc, features=c("Nrgn", "Igf2", "Hap1"), slot="counts")
 ```
@@ -447,6 +442,16 @@ p2 = SpatialFeaturePlot(sc, features=c("Nrgn"), slot="counts")
 DefaultAssay(sc) = "RNA.008um"
 p1 | p2
 ```
+
+::: {.callout-note}
+### Assignment
+Make a violin plot and a spatial feature plot for the gene **Hap1** for the **8µm assay**. Make a violin plot and a spatial feature plot for the gene **Prkcd** for the **16µm assay**. 
+:::
+
+::: {.callout-note}
+### (Bonus-)Assignment
+Explore the structure of the Seurat object with the `str()` function.
+:::
 
 # Session info
 
