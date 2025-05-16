@@ -56,8 +56,8 @@ export SINGULARITYENV_RSTUDIO_PASSWORD="verysecret"
 export SINGULARITYENV_RSTUDIO_PORT=9999
 
 # Define temporary directory
-tmpdir=...
-mkdir -p $tmpdir/singularity $tmpdir/tmp $tmpdir/rserver
+workdir=...
+mkdir -p ${workdir}/singularity ${workdir}/tmp ${workdir}/rserver
 
 # Start R-Server
 singularity exec \
@@ -74,7 +74,7 @@ Once you have started Rstudio with our container, you can start your analysis.
 
 - Open your web browser (we recommend Chrome or Firefox).
 - Navigate to:  
-  - `http://localhost:${SINGULARITYENV_RSTUDIO_PORT}`
+  - `localhost:${SINGULARITYENV_RSTUDIO_PORT}`
 - Log in with the credentials:  
   - Username: `${SINGULARITYENV_RSTUDIO_USER}`  
   - Password: `${SINGULARITYENV_RSTUDIO_PASSWORD}`
