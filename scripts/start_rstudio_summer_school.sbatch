@@ -8,10 +8,10 @@
 #SBATCH --error=rstudio_summer_school_errors.txt
 #SBATCH --job-name=ngscnsummerschool
 #
-# EDIT: --partition (line 13), --nodelist (line 14) and PORT (line 27)
+# EDIT: --nodelist (line 14) and PORT (line 27)
 #
-#SBATCH --partition=ngs.q
-#SBATCH --nodelist=compute-2-3
+#SBATCH --partition=ngscourse.q
+##SBATCH --nodelist=compute-2-3
 
 ###################################                       
 # USER-SPECIFIC SETTINGS (CHANGE) #
