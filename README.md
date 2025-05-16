@@ -10,11 +10,11 @@ With our workbooks, you will explore how to analyze spatial transcriptomics data
 
 **Table of contents**
 
-- [Workbooks overview](#workbooks-overview)
-- [Credits](#credits)
-- [Contributions](#contributions)
+- [Workbooks overview](#workbooks-overview-)
+- [Credits](#credits-)
+- [Contributions](#contributions-)
 - [Citation](#citation)
-- [Quick Start](#quick-start)
+- [Quick Start](#quick-start-)
 
 ## Workbooks overview 📘
 

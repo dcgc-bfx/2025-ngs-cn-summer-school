@@ -48,19 +48,6 @@ options(ggplot2.continuous.colour="viridis")
 options(ggplot2.continuous.fill="viridis")
 options(ggplot2.binned.colour="viridis")
 options(ggplot2.binned.fill="viridis")
-
-# Hook to measure the computation time of a chunk
-# Activate with '#| timeit: true'. Deactivate with '#| timeit: null'
-knitr::knit_hooks$set(timeit = function(before, options, envir) {
-  if(before) {
-    ## code to be run before a chunk
-    tictoc::tic()
-  } else {
-    ## code to be run after a chunk
-    elapsed = tictoc::toc()$toc
-    print(paste0("Execution took ", elapsed, " seconds"))
-  }
-})
 ```
 
 # Loading the dataset
@@ -159,7 +146,7 @@ SpatialDimPlot(sc, cells.highlight=filtered_bins_genes, cols.highlight=c("#FFFF0
 
 Mitochondrial RNA (mtRNA) often increases when cells are stressed or dying. A high percentage is a red flag.
 
-We identify mitochondrial genes using a prefix (^mt-) and calculate their percentage per bin:
+We identify mitochondrial genes using a prefix ("^mt-" means all genes starting with "mt-") and calculate their percentage per bin:
 
 ```{r}
 #| label: qc_5
@@ -177,6 +164,14 @@ p1 | p2
 filtered_bins_mito = WhichCells(sc, expression=pMito_RNA.008um>30)
 SpatialDimPlot(sc, cells.highlight=filtered_bins_mito, cols.highlight=c("#FFFF00", "grey50")) + NoLegend() + ggtitle(paste(length(filtered_bins_mito), "bins filtered"))
 ```
+
+::: {.callout-note}
+## Assignment
+
+Calculate another QC metric that shows the percentage of counts from hemoglobin genes per bin. You can identify hemoglobin genes by the prefix '^Hb[ab]-'.
+
+Next, visualize this metric using both a violin plot and a spatial plot. Do many bins show a high proportion of hemoglobin expression?
+:::
 
 ## Filtering of bins
 
@@ -410,6 +405,12 @@ Visualize first two PCs:
 DimPlot(sc, reduction="pca.sketch", dims=c(1, 2))
 ```
 
+::: {.callout-note}
+## Assignment
+
+Visualize the PCA for PC2 and PC3. 
+:::
+
 In PCA, genes with the largest variation between bins will have the biggest influence on the PCs. The first PC captures the greatest variance across the dataset. The next PC captures the greatest remaining amount of variance, and so on. This way, the top PCs are likely to represent the biological signal where multiple genes are affected by the same biological processes in a coordinated way. In contrast, random technical or biological noise that affects each gene independently are contained in later PCs. 
 
 Downstream analysis can be restricted to the top PCs. We need to decide how many PCs we want to use for our analysis. The following elbow plot shows PCs ranked based on the variance they explain. 
@@ -514,6 +515,7 @@ Note that `umap.sketch` is now the default dimensionality reduction. We can colo
 
 ```{r}
 #| label: clustering_5
+#| dpi: 75
 
 p1 = DimPlot(sc, reduction="umap.sketch", label=TRUE) + NoLegend()
 p2 = SpatialDimPlot(sc, images="slice1.008um") + NoLegend() + scale_fill_manual(values=cal_pal50)
@@ -963,7 +965,7 @@ To make the analysis computationally manageable, we sketch the dataset down to 5
 #| label: annot_3
 
 # Sketch
-cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+cortex = FindVariableFeatures(cortex, nfeatures=1000)
 cortex = SketchData(
   object = cortex,
   ncells = 50000,
@@ -972,7 +974,7 @@ cortex = SketchData(
   over.write = TRUE
 )
 # Feature selection
-cortex = FindVariableFeatures(cortex, selection.method="vst", nfeatures=1000)
+cortex = FindVariableFeatures(cortex, nfeatures=1000)
 
 # Scale data
 cortex = ScaleData(cortex, features=VariableFeatures(cortex))
@@ -1016,7 +1018,8 @@ We use the `subclass_label` column for cell type annotations:
 ```{r}
 #| label: annot_6
 
-ref[[]] %>% dplyr::select(subclass_label) %>% head()
+ref[[]] %>% dplyr::select(subclass_label) %>% head(10)
+table(ref$subclass_label)
 ```
 
 We convert this Seurat object into a `spacexr` Reference object:
@@ -1099,7 +1102,7 @@ cortex$second_cell_type = factor(cortex$second_cell_type)
 
 ## Project back and transfer results
 
-We now project the RCTD results from the cortex sketch dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
+We now project the RCTD results from the sketch cortex dataset to the full cortex dataset. This is similar to the projection of the clustering and UMAP results we did before:
 
 ```{r}
 #| label: annot_11
@@ -1160,55 +1163,63 @@ We plot the distribution of predicted cell types for the `seurat_clusters` and `
 ```{r}
 #| label: annot_14
 
-cell_type_seurat_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um != "Unknown") %>%
+# Include cell types with at least 100 bins annotated
+# Do not include bins with "Unknown" cell type
+bins_per_cell_type = table(sc$first_cell_type.008um)
+cell_types_to_include = which(bins_per_cell_type >= 100) %>% names()
+cell_types_to_include = cell_types_to_include[cell_types_to_include != "Unknown"]
+
+# Count cell types per cluster
+cell_type_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
          dplyr::count(first_cell_type.008um, seurat_clusters.008um)
 
-ggplot(cell_type_seurat_cluster_counts,
+# Plot distribution
+ggplot(cell_type_cluster_counts,
        aes(x=seurat_clusters.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "fill") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
-                position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
   ggtitle(paste0("Distribution of Cell Types across seurat clusters")) +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
 ```
 
 ```{r}
 #| label: annot_15
 
-cell_type_banksy_cluster_counts = sc[[]] %>% 
-         dplyr::filter(first_cell_type.008um != "Unknown") %>%
+# Count cell types per cluster
+cell_type_cluster_counts = sc[[]] %>% 
+         dplyr::filter(first_cell_type.008um %in% cell_types_to_include) %>%
          dplyr::count(first_cell_type.008um, banksy_clusters.008um)
 
-ggplot(cell_type_banksy_cluster_counts,
+# Plot distribution
+ggplot(cell_type_cluster_counts,
        aes(x=banksy_clusters.008um, y=n, fill=first_cell_type.008um)) +
   geom_bar(stat = "identity", position = "fill") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
-                position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
-  ggtitle(paste0("Distribution of Cell Types across BANKSY clusters")) +
-  theme_minimal()
+  ggtitle(paste0("Distribution of Cell Types across banksy clusters")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
 ```
 
 We observe that several **clusters** contain multiple predicted cell types, indicating that clustering performance should still be improved. However, it is also evident that many **bins** may contain more than one cell type, which inherently complicates the clustering process.
 
-Annotation may work better for larger structures such as the `banksy_domains`:
+Annotation may work better for larger structures such as the `banksy_domains`. Here we have a look some of the excitatory neurons that we identified in the previous section and try to find protein domains:
 
 ```{r}
 #| label: annot_16
 
-cell_type_banksy_domain_counts = sc[[]] %>%
+cell_type_domain_counts = sc[[]] %>%
   dplyr::filter(first_cell_type.008um %in% layered_excitatory_neurons) %>%
   dplyr::count(first_cell_type.008um, banksy_domains.008um)
 
-ggplot(cell_type_banksy_domain_counts,
-       aes(x=banksy_domains.008um, y=n, fill=first_cell_type.008um)) +
+ggplot(cell_type_domain_counts,
+       aes(x=first_cell_type.008um, y=n, fill=banksy_domains.008um)) +
   geom_bar(stat = "identity", position = "stack") +
-  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")), 
+  geom_text(aes(label = ifelse(n>50, as.character(first_cell_type.008um), "")),
                 position = position_stack(vjust = 0.5), size = 3) +
   ylab("# of bins") +
-  ggtitle(paste0("Distribution of Cell Types across BANKSY domains")) +
+  ggtitle(paste0("Protein Domains with selected excitatory neurons")) +
   theme_minimal()
 ```
 
@@ -1258,8 +1269,21 @@ sessioninfo::session_info()
 
 # Useful resources
 
-- [OSTA Visium HD Workflow](https://lmweber.org/OSTA/pages/seq-workflow-visium-hd.html)
-- [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
-- [banksy](https://github.com/satijalab/seurat-wrappers/blob/master/docs/banksy.md)
+- Best practices:
+  - [Single-cell best practices](https://www.sc-best-practices.org/preamble.html)
+  - [Orchestrating Single-Cell Analysis with Bioconductor
+](https://bioconductor.org/books/release/OSCA/)
+  - [Orchestrating Spatial Transcriptomics Analysis with Bioconductor
+](https://lmweber.org/OSTA/)
+- Seurat:
+  - [Essential commands](https://satijalab.org/seurat/articles/essential_commands)
+  - [Basic Single-cell Analysis Vignette](https://satijalab.org/seurat/articles/pbmc3k_tutorial)
+  - [Seurat Visium Analysis Vignette](https://satijalab.org/seurat/articles/spatial_vignette)
+  - [Seurat Visium HD Analysis Vignette](https://satijalab.org/seurat/articles/visiumhd_analysis_vignette)
+- Tools:
+  - [Spaceranger](https://www.10xgenomics.com/support/software/space-ranger/latest)
+  - [Loupe Browser](https://www.10xgenomics.com/support/software/loupe-browser/latest)
+  - [Spotsweeper](https://github.com/MicTott/SpotSweeper)
+  - [banksy](https://github.com/prabhakarlab/Banksy)
 
 

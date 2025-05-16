@@ -50,6 +50,63 @@ Quarto documents are written in Markdown, a lightweight markup language that all
 
 A detail documentation of the Markdown syntax can be found in the [quarto documentation](https://quarto.org/docs/guide/).
 
+## Some comments on the our workbook code
+
+Best practices for assignment is to use the `<-` operator. However, we use the `=` (widely used in other languages) that works as well. What you use is up to you as long as you stick to it.
+
+```{r}
+#| label: chunk_4
+
+a <- 1
+a = 1
+```
+
+We sometimes use the `%>%` operator of the `magrittr` package to "pipe" the output of one command into another command:
+
+```{r}
+#| label: chunk_5
+
+library(magrittr)
+# Instead of:
+values = c(1.2, 3.4, 5.6)
+rounded_values = round(values)
+rounded_sum = sum(rounded_values)
+
+# We do:
+rounded_sum = values %>% round() %>% sum()
+```
+
+For plots (of the ggplot2 package), the `+` operator means to add a visual element. For example, the following code adds a title:
+
+```{r}
+#| label: chunk_6
+
+library(ggplot2)
+p = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+p 
+
+# Add title
+p = p + ggtitle("My plot")
+p
+```
+
+Finally, we use the `patchwork` package to combine multiple plots. This package changes the `|` operator (by default logical OR) to combine plots:
+
+```{r}
+#| label: chunk_7
+
+library(patchwork)
+p1 = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+p2 = ggplot(cars, aes(speed, dist)) +
+  geom_point()
+
+p1 | p2
+```
+
+
+
 ## Create a final document
 
 Once you are done, you can render a complete HTML document that contains all your documentation, code and results. Click the **Render** button at the top of the quarto file. Quarto also supports pdf and word output, lets you create presentations, websites, and more. You can find all the options in the [quarto documentation](https://quarto.org/docs/guide/).
