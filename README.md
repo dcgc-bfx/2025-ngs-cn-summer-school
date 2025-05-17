@@ -51,7 +51,7 @@ git clone git@github.com:dcgc-bfx/2025-ngs-cn-summer-school.git
 SINGULARITY_IMAGE=oras://gcr.hrz.tu-chemnitz.de/dcgc-bfx/singularity/singularity-single-cell:Unstable
 
 # Set user, password and port
-export SINGULARITYENV_RSTUDIO_USER=${whoami}
+export SINGULARITYENV_RSTUDIO_USER=$(whoami)
 export SINGULARITYENV_RSTUDIO_PASSWORD="verysecret"
 export SINGULARITYENV_RSTUDIO_PORT=9999
 
